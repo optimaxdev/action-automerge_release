@@ -1,8 +1,8 @@
 name: 'build-test'
 on: # rebuild any PRs and main branch changes
-  pull_request:
-    # only if PR closed
-    types: [closed]
+  push:
+    branches:
+      - master
 
 jobs:
   build: # make sure build/ci work properly
