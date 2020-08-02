@@ -1,6 +1,6 @@
 <p  align="center">
 
-<a  href="https://github.com/pashoo2/action-automerge_release"><img  alt="typescript-action status"  src="https://github.com/pashoo2/action-automerge_release/workflows/build-test/badge.svg"></a>
+<a  href="https://github.com/optimaxdev/action-automerge_release"><img  alt="typescript-action status"  src="https://github.com/optimaxdev/action-automerge_release/workflows/build-test/badge.svg"></a>
 
 </p>
 
@@ -35,7 +35,7 @@ merge: # make sure the action works on a clean machine without building
 runs-on: ubuntu-latest
 steps:
 # run the action
- - uses: pashoo2/action-automerge_release@main
+ - uses: optimaxdev/action-automerge_release@main
  name: run_automerge
  id: run_automerge
  # PR must be successfully merged and repo succesfully initiated on the previous step
