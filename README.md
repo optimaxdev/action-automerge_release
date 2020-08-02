@@ -19,7 +19,7 @@ You made a hotfix for ``release/R-111`` and created a pull-request. After some t
 To use the automerge action you need to create a file ``root/.git/workflows/any_workflow_name.yml`` with content like this:
 ```yaml
 name: 'Automerge'
-on: # rebuild any PRs and main branch changes
+on:
 pull_request:
  # only if PR closed
  types: [closed]
@@ -29,7 +29,7 @@ merge: # make sure the action works on a clean machine without building
 runs-on: ubuntu-latest
 steps:
 # run the action
- - uses: optimaxdev/action-automerge_release@main
+ - uses: optimaxdev/action-automerge_release@master
  name: run_automerge
  id: run_automerge
  # PR must be successfully merged and repo succesfully initiated on the previous step
