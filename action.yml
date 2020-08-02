@@ -1,0 +1,36 @@
+nme: 'Automerge hotfixes'
+description: 'Allod to automerge hotfixes into a branches specified'
+author: 'optimaxdev'
+inputs:
+  token:
+    description: 'GitHub token'
+    required: false
+    default: ${{ github.token }}
+  releaseBranchPrfix:
+    description: 'Which prefix used for release branches'
+    required: false
+    default: 'release'
+  releaseBranchTaskPrefix:
+      description: 'Prefix of release branch task, before numbers. E.g. for the name "release/RLS-11" string "RLS-" is the prefix'
+      required: false
+      default: 'RLS-'
+  mainBranchName:
+    description: 'Reference to the main branch'
+    required: false
+    default: 'main'
+  automergePrLabel:
+      description: 'Label added to a PR created on a merge conflict'
+      required: false
+      default: 'automerge failed'
+  remoteName:
+      description: 'Name of the remote repository'
+      required: false
+      default: 'origin'
+  # DEPRECATED
+  # branchFetchingStrategy:
+  #     description: 'Strategy used for releated branches list fetching. Can be "api" - GitHub API will be used or DEPRECATED! "bash" - git cli from bash will be used'
+  #     required: false
+  #     default: 'api'
+runs:
+  using: 'node12'
+  main: 'dist/index.js'
