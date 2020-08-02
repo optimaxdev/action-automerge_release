@@ -1,10 +1,4 @@
-<p  align="center">
-
-<a  href="https://github.com/optimaxdev/action-automerge_release"><img  alt="typescript-action status"  src="https://github.com/optimaxdev/action-automerge_release/workflows/build-test/badge.svg"></a>
-
-</p>
-
-  
+![build-test](https://github.com/optimaxdev/action-automerge_release/workflows/build-test/badge.svg)
 
 # Auto Merging changes to following up release branches and "default" branch
 
