@@ -1,5 +1,5 @@
 import path from 'path';
-import { TGitHubPullRequest } from '../types/github';
+import { IGitHubPushDescription } from '../types/github';
 import { TArrayElement } from '../types/helpers';
 import { TGitHubApiRestRefResponseData } from '../types/github-api';
 import { GIT_REF_HEADS_PREFIX, GIT_HEADS_PREFIX } from '../const/github';
@@ -7,51 +7,51 @@ import { GIT_REF_HEADS_PREFIX, GIT_HEADS_PREFIX } from '../const/github';
 /**
  * Get a name of a PR's branch
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a branch from which the PR was created
  */
 export function getPRBranchName(
-    pullRequest: TGitHubPullRequest
+    pushDescription: IGitHubPushDescription
 ): string {
-    return pullRequest.head.ref;
+    return pushDescription.head.ref;
 }
 
 /**
  * Get a name of PR's repository
  *
  * @export
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string}
  */
 export function getPRRepo(
-    pullRequest: TGitHubPullRequest
+    pushDescription: IGitHubPushDescription
 ): string {
-    return pullRequest.base.repo.name;
+    return pushDescription.base.repo.name;
 }
 
 /**
  * Get a login of PR's repository owner
  *
  * @export
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string}
  */
 export function getPRRepoOwner(
-    pullRequest: TGitHubPullRequest
+    pushDescription: IGitHubPushDescription
 ): string {
-    return pullRequest.base.repo.owner.login
+    return pushDescription.base.repo.owner.login
 }
 
 /**
  * Get a name of a target branch for the PR
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a target branch the PR
  */
 export function getPRTargetBranchName(
-    pullRequest: TGitHubPullRequest
+    pushDescription: IGitHubPushDescription
 ): string {
-    return pullRequest.base.ref;
+    return pushDescription.base.ref;
 }
 
 /**

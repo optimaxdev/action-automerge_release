@@ -1,6 +1,6 @@
 import {inspect} from 'util';
 import { IContextEnv } from "../types/context";
-import { TGitHubPullRequest, TGitHubOctokit } from '../types/github';
+import { IGitHubPushDescription, TGitHubOctokit } from '../types/github';
 import { TGitHubApiRestRefResponseData } from '../types/github-api';
 import { debug } from './log';
 import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner } from './github-common';
@@ -10,7 +10,7 @@ import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepo
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {number} [perPage=100] - how many items to fetch on one page
  * @param {number} [page=1] - requested page number
  * @param {string} [owner]
@@ -19,14 +19,14 @@ import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepo
  */
 export async function fetchBranchesList(
   octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+  pushDescription: IGitHubPushDescription,
   branchPrefix: string,
   page: number = 1,
   perPage: number = 100,
 ): Promise<TGitHubApiRestRefResponseData> {
   const requestParams = {
-    owner: getPRRepoOwner(pullRequest),
-    repo: getPRRepo(pullRequest),
+    owner: getPRRepoOwner(pushDescription),
+    repo: getPRRepo(pushDescription),
     ref: getBranchRefPrefix(branchPrefix),
     page,
     per_page: perPage
@@ -43,14 +43,14 @@ export async function fetchBranchesList(
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {IContextEnv} contextEnv
  * @returns {(Promise<Array<string> | undefined>)}
  * @throws
  */
 export async function fetchReleaseBranchesNamesByAPI(
   octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+  pushDescription: IGitHubPushDescription,
   contextEnv: IContextEnv,
 ): Promise<string[]> {
   const perPage = 100;
@@ -60,7 +60,7 @@ export async function fetchReleaseBranchesNamesByAPI(
   while (pageIdx += 1) {
     const branchesDescriptions = await fetchBranchesList(
       octokit,
-      pullRequest,
+      pushDescription,
       contextEnv.releaseBranchPrfix,
       pageIdx,
       perPage,
@@ -80,7 +80,7 @@ export async function fetchReleaseBranchesNamesByAPI(
  * https://developer.github.com/v3/repos/merging/#merge-a-branch
  * 
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName
  * @param {string} sourceBranchName
  * @returns {undefined | false} - return undefined if no error, false - if merge conflict
@@ -88,13 +88,13 @@ export async function fetchReleaseBranchesNamesByAPI(
  */
 export async function mergeBranchTo(
   octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+  pushDescription: IGitHubPushDescription,
   targetBranchName: string,
   sourceBranchName: string,
 ) { 
   const requestParams = {
-    owner: getPRRepoOwner(pullRequest),
-    repo: getPRRepo(pullRequest),
+    owner: getPRRepoOwner(pushDescription),
+    repo: getPRRepo(pushDescription),
     base: targetBranchName,
     head: sourceBranchName,
   };
@@ -136,7 +136,7 @@ export async function mergeBranchTo(
  * https://developer.github.com/v3/pulls/#list-pull-requests
  * 
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
  * @param {string} sourceBranchName - e.g. 'feature/TASK-11'
  * @returns {boolean} - true if a PR related to branches was found
@@ -144,13 +144,13 @@ export async function mergeBranchTo(
  */
 export async function checkActivePRExists(
   octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+  pushDescription: IGitHubPushDescription,
   targetBranchName: string,
   sourceBranchName: string,
 ): Promise<boolean> {
   const requestConf = {
-    owner: getPRRepoOwner(pullRequest),
-    repo: getPRRepo(pullRequest),
+    owner: getPRRepoOwner(pushDescription),
+    repo: getPRRepo(pushDescription),
     base: targetBranchName,
     head: sourceBranchName,
     state: "open" as "open",
@@ -174,7 +174,7 @@ export async function checkActivePRExists(
  * https://developer.github.com/v3/pulls/#create-a-pull-request
  * 
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
  * @param {string} sourceBranchName - e.g. 'feature/TASK-11'
  * @returns {number} - returns a number of pull request created
@@ -182,13 +182,13 @@ export async function checkActivePRExists(
  */
 export async function createNewPR(
   octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+  pushDescription: IGitHubPushDescription,
   targetBranchName: string,
   sourceBranchName: string,
 ): Promise<number> {
   const requestConf = {
-    owner: getPRRepoOwner(pullRequest),
-    repo: getPRRepo(pullRequest),
+    owner: getPRRepoOwner(pushDescription),
+    repo: getPRRepo(pushDescription),
     base: targetBranchName,
     head: sourceBranchName,
     title: `Merge release branch ${sourceBranchName} to the release branch ${targetBranchName}`,
@@ -217,7 +217,7 @@ export async function createNewPR(
  * 
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {number} prNumber
  * @param {(string | string[])} label - one or more labels to add
  * @returns {Promise<void>} - return nothing if successfully added
@@ -225,13 +225,13 @@ export async function createNewPR(
  */
 export async function addLabelForPr(
   octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+  pushDescription: IGitHubPushDescription,
   prNumber: number,
   label: string | string[],
 ): Promise<void> {
   const requestConf = {
-    owner: getPRRepoOwner(pullRequest),
-    repo: getPRRepo(pullRequest),
+    owner: getPRRepoOwner(pushDescription),
+    repo: getPRRepo(pushDescription),
     issue_number: prNumber,
     labels: Array.isArray(label) ? label : [label],
   };

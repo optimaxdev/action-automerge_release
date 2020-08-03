@@ -9,20 +9,19 @@ export const GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION = '0123';
 
 export const GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
 
-export const GITHUB_PULL_REQUEST_MOCK = {
+export const GITHUB_PUSH_DESCRIPTION_MOCK = {
   base: {
     ref: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME,
     repo: {
-      name: 'repo.name',
+      name: 'owner/repository_name',
       owner: {
-        login: 'repo.owner.login',
+        login: 'owner_login',
       }
     }
   },
   head: {
-    ref: 'branch_head_ref'
+    ref: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME,
   },
-  changed_files: 1
 }
 
 export const GITHUB_BRANCH_REF_DESCRIPTION_MOCK = {
@@ -38,9 +37,15 @@ export const GITHUB_BRANCH_REF_DESCRIPTION_MOCK = {
 
 export const GITHUB_CONTEXT_MOCK = {
   payload: {
-    pull_request: GITHUB_PULL_REQUEST_MOCK,
+    ref: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME,
+    repository: {
+      full_name: 'owner/repository_name',
+      owner: {
+        login: 'owner_login',
+      }
+    }
   }
-}
+} as any;
 
 export const BRANCHES_REFS_LIST_MOCK = ({
   data: [

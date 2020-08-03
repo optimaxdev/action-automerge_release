@@ -63,7 +63,7 @@ function init() {
         throw new Error('Failed to connect to the Octokit');
     }
     return {
-        pullRequest: pull_request,
+        pushDescription: pull_request,
         octokit,
         contextEnv
     };

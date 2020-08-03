@@ -1,5 +1,5 @@
-import { TGitHubPullRequest, TGitHubOctokit } from '../types/github';
-import { BRANCHES_REFS_LIST_MOCK, GITHUB_PULL_REQUEST_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX } from './__mocks__/github-entities.mock';
+import { IGitHubPushDescription, TGitHubOctokit } from '../types/github';
+import { BRANCHES_REFS_LIST_MOCK, GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX } from './__mocks__/github-entities.mock';
 import { IContextEnv } from '../types/context';
 import {run} from '../workflow';
 
@@ -10,9 +10,9 @@ jest.mock('../init')
 jest.mock('../lib/repo-api')
 jest.mock('../merge-to-release')
 
-describe('main', () => {
+describe('workflow', () => {
     let octokit: TGitHubOctokit;
-    let pullRequest: TGitHubPullRequest;
+    let pushDescription: IGitHubPushDescription;
     let contextEnv: IContextEnv;
     let branchesRelatedList: string[];
 
@@ -33,7 +33,7 @@ describe('main', () => {
           addLabels: jest.fn(() => ({ status: 200 }))
         }
       } as unknown as TGitHubOctokit
-      pullRequest = {...GITHUB_PULL_REQUEST_MOCK} as unknown as TGitHubPullRequest
+      pushDescription = {...GITHUB_PUSH_DESCRIPTION_MOCK} as unknown as IGitHubPushDescription
       contextEnv = {
         token: 'token',
         releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
@@ -48,7 +48,7 @@ describe('main', () => {
         `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}99999`, 
       ]
       init.mockReturnValue({
-            pullRequest,
+            pushDescription,
             octokit,
             contextEnv,
         });
@@ -102,8 +102,10 @@ describe('main', () => {
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
         expect(setFailedSpy).toBeCalledWith('No branches were found');
     })
-    it('should merge PR branch to the main branch provided', async () => {
-        const {mergeSourceToBranch} = require('../merge-to-release')
+    it('should merge PR branch to the main branch provided if no related branches', async () => {
+        const {mergeSourceToBranch, getBranchesRelatedToPD, getTargetBranchesNames} = require('../merge-to-release')
+        getBranchesRelatedToPD.mockReturnValue([]);
+        getTargetBranchesNames.mockReturnValue([]);
         mergeSourceToBranch.mockReturnValue(undefined)
         expect(mergeSourceToBranch).not.toBeCalled();
 
@@ -116,22 +118,31 @@ describe('main', () => {
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv
         );
+        expect(getBranchesRelatedToPD).toBeCalledTimes(1);
+        expect(getBranchesRelatedToPD).toBeCalledWith(
+            pushDescription,
+            contextEnv,
+            branchesRelatedList
+        );
+        expect(getTargetBranchesNames).toBeCalledTimes(1);
+        expect(getTargetBranchesNames).toBeCalledWith([]);
         expect(mergeSourceToBranch).toBeCalledTimes(1);
         expect(mergeSourceToBranch).toBeCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv,
             contextEnv.mainBranchName,
         );
     })
     it('should catches right after rejected on merging PR source branch to the main branch', async () => {
         const expectedErrorMessage = 'expectedErrorMessage';
-        const {mergeSourceToBranch, mergeToRelated} = require('../merge-to-release')
-
-        expect(mergeToRelated).not.toBeCalled();
+        const {mergeSourceToBranch, mergeToBranches, getBranchesRelatedToPD, getTargetBranchesNames} = require('../merge-to-release')
+        getBranchesRelatedToPD.mockReturnValue([]);
+        getTargetBranchesNames.mockReturnValue([]);
+        expect(mergeToBranches).not.toBeCalled();
         mergeSourceToBranch.mockImplementation(() => {
             throw new Error(expectedErrorMessage);
         })
@@ -151,24 +162,36 @@ describe('main', () => {
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv
         );
+        expect(getBranchesRelatedToPD).toBeCalledTimes(1);
+        expect(getBranchesRelatedToPD).toBeCalledWith(
+            pushDescription,
+            contextEnv,
+            branchesRelatedList
+        );
+        expect(getTargetBranchesNames).toBeCalledTimes(1);
+        expect(getTargetBranchesNames).toBeCalledWith([]);
         expect(mergeSourceToBranch).toBeCalledTimes(2);
         expect(mergeSourceToBranch).toHaveBeenLastCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv,
             contextEnv.mainBranchName,
         );
         expect(setFailedSpy).toBeCalledWith(expectedErrorMessage);
-        expect(mergeToRelated).not.toBeCalled();
+        expect(mergeToBranches).not.toBeCalled();
     })
-    it('should merge to related branches after merged to the main branch', async () => {
-        const {mergeSourceToBranch, mergeToRelated} = require('../merge-to-release')
+    // TODO
+    it('should merge to related branches before be merged to the main branch', async () => {
+        const {mergeSourceToBranch, mergeToBranches, getBranchesRelatedToPD, getTargetBranchesNames} = require('../merge-to-release')
+        const targetBranches = [branchesRelatedList[0]];
 
-        mergeToRelated.mockReturnValue(undefined);
-        expect(mergeToRelated).not.toBeCalled();
+        getBranchesRelatedToPD.mockReturnValue(branchesRelatedList);
+        getTargetBranchesNames.mockReturnValue(targetBranches);
+        mergeToBranches.mockReturnValue(undefined);
+        expect(mergeToBranches).not.toBeCalled();
         mergeSourceToBranch.mockReturnValue(undefined);
         expect(mergeSourceToBranch).not.toBeCalled();
 
@@ -184,32 +207,34 @@ describe('main', () => {
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv
         );
-        expect(mergeSourceToBranch).toBeCalledTimes(1);
-        expect(mergeSourceToBranch).toHaveBeenLastCalledWith(
-            octokit,
-            pullRequest,
-            contextEnv,
+        expect(mergeSourceToBranch).not.toHaveBeenLastCalledWith(
+            expect.anything(),
+            expect.anything(),
+            expect.anything(),
             contextEnv.mainBranchName,
         );
-        expect(mergeToRelated).toBeCalledWith(
+        expect(mergeToBranches).toBeCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv,
-            branchesRelatedList
+            targetBranches
         );
         expect(setFailedSpy).not.toBeCalled();
     })
     it('should catch if failed while merging to related branches', async () => {
         const expectedErrorMessage = 'expectedErrorMessage';
-        const {mergeSourceToBranch, mergeToRelated} = require('../merge-to-release')
+        const {mergeSourceToBranch, mergeToBranches, getBranchesRelatedToPD, getTargetBranchesNames} = require('../merge-to-release')
+        const targetBranches = [branchesRelatedList[0]];
 
-        mergeToRelated.mockImplementation(() => {
+        mergeToBranches.mockImplementation(() => {
             throw new Error(expectedErrorMessage)
         });
-        expect(mergeToRelated).not.toBeCalled();
+        expect(mergeToBranches).not.toBeCalled();
+        getBranchesRelatedToPD.mockReturnValue(branchesRelatedList);
+        getTargetBranchesNames.mockReturnValue(targetBranches);
         mergeSourceToBranch.mockReturnValue(undefined);
         expect(mergeSourceToBranch).not.toBeCalled();
 
@@ -222,24 +247,60 @@ describe('main', () => {
         
         expect(setFailedSpy).not.toBeCalled();
         await expect(run()).resolves.toBe(undefined);
+        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
         expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv
         );
-        expect(mergeSourceToBranch).toBeCalledTimes(1);
-        expect(mergeSourceToBranch).toHaveBeenLastCalledWith(
-            octokit,
-            pullRequest,
-            contextEnv,
+        expect(mergeSourceToBranch).not.toHaveBeenLastCalledWith(
+            expect.anything(),
+            expect.anything(),
+            expect.anything(),
             contextEnv.mainBranchName,
         );
-        expect(mergeToRelated).toBeCalledWith(
+        expect(mergeToBranches).toBeCalledWith(
             octokit,
-            pullRequest,
+            pushDescription,
             contextEnv,
-            branchesRelatedList
+            targetBranches
         );
+        expect(setFailedSpy).toBeCalledWith(expectedErrorMessage);
+    })
+    it('should catch if failed while merging to the main branch', async () => {
+        const expectedErrorMessage = 'expectedErrorMessage';
+        const {mergeSourceToBranch, mergeToBranches, getBranchesRelatedToPD, getTargetBranchesNames} = require('../merge-to-release')
+        
+        mergeSourceToBranch.mockImplementation(() => {
+            throw new Error(expectedErrorMessage)
+        });
+        expect(mergeSourceToBranch).not.toBeCalled();
+        getBranchesRelatedToPD.mockReturnValue([]);
+        getTargetBranchesNames.mockReturnValue([]);
+        expect(mergeToBranches).not.toBeCalled();
+
+        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')
+        
+        fetchReleaseBranchesNamesByAPI.mockReturnValue(branchesRelatedList);
+        expect(fetchReleaseBranchesNamesByAPI).not.toBeCalled();
+
+        const setFailedSpy = jest.spyOn(require('@actions/core'), 'setFailed');
+        
+        expect(setFailedSpy).not.toBeCalled();
+        await expect(run()).resolves.toBe(undefined);
+        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
+        expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
+            octokit,
+            pushDescription,
+            contextEnv
+        );
+        expect(mergeSourceToBranch).toHaveBeenLastCalledWith(
+            expect.anything(),
+            expect.anything(),
+            expect.anything(),
+            contextEnv.mainBranchName,
+        );
+        expect(mergeToBranches).not.toBeCalled();
         expect(setFailedSpy).toBeCalledWith(expectedErrorMessage);
     })
 })

@@ -7,7 +7,7 @@ import {
   addLabelForPr
 } from '../lib/repo-api'
 import {
-  GITHUB_PULL_REQUEST_MOCK,
+  GITHUB_PUSH_DESCRIPTION_MOCK,
   BRANCHES_REFS_LIST_MOCK,
 } from './__mocks__/github-entities.mock'
 
@@ -20,7 +20,7 @@ jest.mock('../lib/github-common', () => ({
 
 describe('lib repo-api', () => {
   let octokit: any
-  let pullRequest: any
+  let pushDescription: any
   let contextEnv: any
 
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe('lib repo-api', () => {
         addLabels: jest.fn(() => ({ status: 200 }))
       }
     }
-    pullRequest = {...GITHUB_PULL_REQUEST_MOCK}
+    pushDescription = {...GITHUB_PUSH_DESCRIPTION_MOCK}
     contextEnv = {
       releaseBranchPrfix: 'branch_prefix'
     }
@@ -47,19 +47,19 @@ describe('lib repo-api', () => {
 
   describe('fetchBranchesList', () => {
     it('should return branches refs list', async () => {
-      const branchesList = await fetchBranchesList(octokit, pullRequest, 'branch_prefix');
+      const branchesList = await fetchBranchesList(octokit, pushDescription, 'branch_prefix');
       expect(branchesList).toEqual(expect.arrayContaining(BRANCHES_REFS_LIST_MOCK.data));
     })
   })
   describe('fetchReleaseBranchesNamesByAPI', () => {
     it('should return list with a branches', async () => {
-      const branchesList = await fetchReleaseBranchesNamesByAPI(octokit, pullRequest, contextEnv);
+      const branchesList = await fetchReleaseBranchesNamesByAPI(octokit, pushDescription, contextEnv);
       expect(branchesList).toEqual(expect.arrayContaining(BRANCHES_REFS_LIST_MOCK.data.map(() => 'getBranchNameByRefDescription')));
     })
     it('should call getBranchNameByRefDescription with a branches refs list items', async () => {
       const {getBranchNameByRefDescription} = require('../lib/github-common');
       getBranchNameByRefDescription.mockClear();
-      await fetchReleaseBranchesNamesByAPI(octokit, pullRequest, contextEnv);
+      await fetchReleaseBranchesNamesByAPI(octokit, pushDescription, contextEnv);
       BRANCHES_REFS_LIST_MOCK.data.forEach((branchRefDescription) => {
         expect(getBranchNameByRefDescription).toBeCalledWith(branchRefDescription, expect.anything(), expect.anything())
       })
@@ -75,7 +75,7 @@ describe('lib repo-api', () => {
       }
       await expect(mergeBranchTo(
         octokitWithRepos as any,
-        pullRequest,
+        pushDescription,
         'target',
         'source',
       )).resolves.toBe(undefined);
@@ -88,7 +88,7 @@ describe('lib repo-api', () => {
       }
       await expect(mergeBranchTo(
         octokitWithRepos as any,
-        pullRequest,
+        pushDescription,
         'target',
         'source',
       )).resolves.toBe(undefined);
@@ -102,7 +102,7 @@ describe('lib repo-api', () => {
       }
       await expect(mergeBranchTo(
         octokitWithRepos as any,
-        pullRequest,
+        pushDescription,
         'target',
         'source',
       )).resolves.toBe(false);
@@ -116,7 +116,7 @@ describe('lib repo-api', () => {
       }
       await expect(mergeBranchTo(
         octokitWithRepos as any,
-        pullRequest,
+        pushDescription,
         'target',
         'source',
       )).rejects.toThrow();
@@ -135,7 +135,7 @@ describe('lib repo-api', () => {
       }
       await expect(mergeBranchTo(
         octokitWithRepos as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).resolves.toBe(false);
@@ -153,7 +153,7 @@ describe('lib repo-api', () => {
       }
       await expect(mergeBranchTo(
         octokitWithRepos as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).rejects.toThrow();
@@ -170,7 +170,7 @@ describe('lib repo-api', () => {
       }
       await expect(checkActivePRExists(
         octokitPulls as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).resolves.toBe(false);
@@ -184,7 +184,7 @@ describe('lib repo-api', () => {
       }
       await expect(checkActivePRExists(
         octokitPulls as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).resolves.toBe(true);
@@ -198,7 +198,7 @@ describe('lib repo-api', () => {
       }
       await expect(checkActivePRExists(
         octokitPulls as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).rejects.toThrow();
@@ -214,7 +214,7 @@ describe('lib repo-api', () => {
       }
       await expect(checkActivePRExists(
         octokitPulls as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).rejects.toThrow();
@@ -232,7 +232,7 @@ describe('lib repo-api', () => {
       }
       await expect(createNewPR(
         octokitPulls as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).resolves.toBe(expectedValue);
@@ -246,7 +246,7 @@ describe('lib repo-api', () => {
       }
       await expect(createNewPR(
         octokitPulls as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).rejects.toThrow();
@@ -262,7 +262,7 @@ describe('lib repo-api', () => {
       }
       await expect(createNewPR(
         octokitPulls as any,
-        pullRequest,
+        pushDescription,
         'branch_a',
         'branch_b',
       )).rejects.toThrow();
@@ -280,7 +280,7 @@ describe('lib repo-api', () => {
       const testLabel = 'label'
       await addLabelForPr(
         octokitIssues as any,
-        pullRequest,
+        pushDescription,
         11,
         testLabel
       );
@@ -296,7 +296,7 @@ describe('lib repo-api', () => {
       }
       await expect(addLabelForPr(
         octokitIssues as any,
-        pullRequest,
+        pushDescription,
         11,
         'label'
       )).resolves.toBe(undefined);
@@ -310,7 +310,7 @@ describe('lib repo-api', () => {
       }
       await expect(addLabelForPr(
         octokitIssues as any,
-        pullRequest,
+        pushDescription,
         11,
         'label'
       )).rejects.toThrow();
@@ -326,7 +326,7 @@ describe('lib repo-api', () => {
       }
       await expect(addLabelForPr(
         octokitIssues as any,
-        pullRequest,
+        pushDescription,
         11,
         'label'
       )).rejects.toThrow();

@@ -864,7 +864,7 @@ const github_1 = __webpack_require__(272);
 /**
  * Get a name of a PR's branch
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a branch from which the PR was created
  */
 function getPRBranchName(pullRequest) {
@@ -875,7 +875,7 @@ exports.getPRBranchName = getPRBranchName;
  * Get a name of PR's repository
  *
  * @export
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string}
  */
 function getPRRepo(pullRequest) {
@@ -886,7 +886,7 @@ exports.getPRRepo = getPRRepo;
  * Get a login of PR's repository owner
  *
  * @export
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string}
  */
 function getPRRepoOwner(pullRequest) {
@@ -896,7 +896,7 @@ exports.getPRRepoOwner = getPRRepoOwner;
 /**
  * Get a name of a target branch for the PR
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a target branch the PR
  */
 function getPRTargetBranchName(pullRequest) {
@@ -953,7 +953,7 @@ const log_1 = __webpack_require__(936);
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} brnachName
  * @param {string} sourceBranchName
  * @param {string} pullRequestLabel - a label for pull request if created automatically
@@ -3738,7 +3738,7 @@ const github_common_1 = __webpack_require__(312);
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {number} [perPage=100] - how many items to fetch on one page
  * @param {number} [page=1] - requested page number
  * @param {string} [owner]
@@ -3767,7 +3767,7 @@ exports.fetchBranchesList = fetchBranchesList;
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {IContextEnv} contextEnv
  * @returns {(Promise<Array<string> | undefined>)}
  * @throws
@@ -3794,7 +3794,7 @@ exports.fetchReleaseBranchesNamesByAPI = fetchReleaseBranchesNamesByAPI;
  * https://developer.github.com/v3/repos/merging/#merge-a-branch
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName
  * @param {string} sourceBranchName
  * @returns {undefined | false} - return undefined if no error, false - if merge conflict
@@ -3847,7 +3847,7 @@ exports.mergeBranchTo = mergeBranchTo;
  * https://developer.github.com/v3/pulls/#list-pull-requests
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
  * @param {string} sourceBranchName - e.g. 'feature/TASK-11'
  * @returns {boolean} - true if a PR related to branches was found
@@ -3881,7 +3881,7 @@ exports.checkActivePRExists = checkActivePRExists;
  * https://developer.github.com/v3/pulls/#create-a-pull-request
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
  * @param {string} sourceBranchName - e.g. 'feature/TASK-11'
  * @returns {number} - returns a number of pull request created
@@ -3919,7 +3919,7 @@ exports.createNewPR = createNewPR;
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {number} prNumber
  * @param {(string | string[])} label - one or more labels to add
  * @returns {Promise<void>} - return nothing if successfully added
@@ -6567,7 +6567,7 @@ exports.mergeSourceToBranch = mergeSourceToBranch;
  * Merge PR's branch to related releases branches.
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {IContextEnv} contextEnv
  * @param {string[]} targetBranchesList
  * @returns {Promist<void>} - returns nothing after work
