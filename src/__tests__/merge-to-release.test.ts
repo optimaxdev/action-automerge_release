@@ -2,13 +2,15 @@ import {
   getBranchNameWithoutPrefix,
   getBranchNameReleaseSerialNumber,
   getBranchesWithUpperSerialNumber,
-  mergeToRelated,
+  mergeToBranches,
   mergeSourceToBranch,
+  getBranchesRelatedToPD,
 } from '../merge-to-release';
 import {mergeBranchTo} from '../lib/repo-api';
-import {createPullRequestIfNotAlreadyExists} from '../utils/repo';
-import { GITHUB_PULL_REQUEST_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME } from './__mocks__/github-entities.mock';
+import {createpushDescriptionIfNotAlreadyExists} from '../utils/repo';
+import { GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION } from './__mocks__/github-entities.mock';
 import { IContextEnv } from '../types/context';
+import { getTargetBranchesNames, getBranchNameWithoutRefsPrefix } from '../merge-to-release';
 
 jest.mock('../lib/repo-api');
 jest.mock('../utils/repo');
@@ -20,6 +22,66 @@ const CONTEXT_ENV_MOCK = {
 } as unknown as IContextEnv;
 
 describe('merge-to-release module', () => {
+  describe('getBranchNameWithoutRefsPrefix', () => {
+    it('should return the same branch name if the "refs/heads" string is not in the branch name', () => {
+      const expected = 'branch_name_expected';
+      expect(getBranchNameWithoutRefsPrefix(expected)).toBe(expected);
+    })
+    it('should return an empty string if empty string is passes as argument', () => {
+      const expected = '';
+      expect(getBranchNameWithoutRefsPrefix(expected)).toBe(expected);
+    })
+    it('should remove the "refs/heads/" prefix', () => {
+      const prefix = "refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "    refs/heads/" prefix', () => {
+      const prefix = "    refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "/refs/heads/" prefix', () => {
+      const prefix = " /refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "       /refs/heads/" prefix', () => {
+      const prefix = "       /refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "       /Refs/HEADs/" prefix', () => {
+      const prefix = "       /Refs/HEADs/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should not remove the "refs/heads" prefix, cause there is no slash at the end', () => {
+      const prefix = "refs/heads";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "refs_/heads" prefix, cause there is an additional symbol in refs prefix', () => {
+      const prefix = "refs_/heads";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "_refs/heads" prefix, cause there is an additional symbol in refs prefix', () => {
+      const prefix = "_refs/heads";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "refs/heads_" prefix, cause there is an additional symbol in heads prefix', () => {
+      const prefix = "refs/heads_";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "refs/heads" if it is not at the start of a ref string', () => {
+      const postfix = "refs/heads/";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${branchName}${postfix}`)).toBe(`${branchName}${postfix}`);
+    })
+  });
   describe('getBranchNameWithoutPrefix', () => {
     it('should return "RLS-11" for branchName = "release/RLS-11" and releasePrefix="release"', () => {
       const testBranchName = 'release/RLS-11'
@@ -81,6 +143,22 @@ describe('merge-to-release module', () => {
       const testBranchName = 'R/'
       const testReleasePrefix = 'R/'
       const expected = ''
+      expect(
+        getBranchNameWithoutPrefix(testBranchName, testReleasePrefix)
+      ).toBe(expected)
+    })
+    it('should return "RLS-11" for branchName = "refs/heads/release/RLS-11" and releasePrefix="release"', () => {
+      const testBranchName = 'refs/heads/release/RLS-11'
+      const testReleasePrefix = 'release'
+      const expected = 'RLS-11'
+      expect(
+        getBranchNameWithoutPrefix(testBranchName, testReleasePrefix)
+      ).toBe(expected)
+    })
+    it('should return "RLS-11" for branchName = "    /Refs/Heads/release/RLS-11" and releasePrefix="release"', () => {
+      const testBranchName = '    /Refs/Heads/release/RLS-11'
+      const testReleasePrefix = 'release'
+      const expected = 'RLS-11'
       expect(
         getBranchNameWithoutPrefix(testBranchName, testReleasePrefix)
       ).toBe(expected)
@@ -327,183 +405,294 @@ describe('merge-to-release module', () => {
     test('should not create a PR if no merge conflict with a target branch', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue();
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
-      (createPullRequestIfNotAlreadyExists as any).mockReturnValue();
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
       const octokit = {} as any;
       await mergeSourceToBranch(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
         'branch_b',
       )
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledTimes(0);
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(0);
     })
     test('should not create a PR if GitHub API call throws', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockImplementation(() => {
         throw new Error('Error');
       });
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
-      (createPullRequestIfNotAlreadyExists as any).mockReturnValue();
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
 
       const octokit = {} as any;
 
       expect(() => mergeBranchTo(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         'branch_b',
-        GITHUB_PULL_REQUEST_MOCK.head.ref,
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref,
       )).toThrow();
       expect(mergeBranchTo).toBeCalledTimes(1);
       await expect(mergeSourceToBranch(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
         'branch_b',
       )).rejects.toThrow()
       expect(mergeBranchTo).toBeCalledTimes(2);
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledTimes(0);
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(0);
     })
     test('should rejects if PR creation throws on merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
-      (createPullRequestIfNotAlreadyExists as any).mockReturnValue();
-      (createPullRequestIfNotAlreadyExists as any).mockImplementation(() => {
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+      (createpushDescriptionIfNotAlreadyExists as any).mockImplementation(() => {
         throw new Error('Error');
       });
 
       const octokit = {} as any;
 
-      expect(() => createPullRequestIfNotAlreadyExists(
+      expect(() => createpushDescriptionIfNotAlreadyExists(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         'branch_b',
-        GITHUB_PULL_REQUEST_MOCK.head.ref,
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref,
       )).toThrow();
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledTimes(1);
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(1);
       await expect(mergeSourceToBranch(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
         'branch_b',
       )).rejects.toThrow()
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledTimes(2);
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(2);
     })
     test('should create a PR on a merge conflict with a branch', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
-      (createPullRequestIfNotAlreadyExists as any).mockReturnValue();
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
       const octokit = {} as any;
       await mergeSourceToBranch(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
         'branch_b',
       )
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledWith(
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledWith(
         expect.anything(),
         expect.anything(),
         'branch_b',
-        GITHUB_PULL_REQUEST_MOCK.head.ref,
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref,
         CONTEXT_ENV_MOCK.automergePrLabel
       );
     })
     test('should resolves with false on a merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
-      (createPullRequestIfNotAlreadyExists as any).mockReturnValue();
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
       const octokit = {} as any;
       await expect(mergeSourceToBranch(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
         'branch_b',
       )).resolves.toBe(false);
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledTimes(1);
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(1);
     })
     test('should resolves with undefined if no merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue();
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
-      (createPullRequestIfNotAlreadyExists as any).mockReturnValue();
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
       const octokit = {} as any;
       await expect(mergeSourceToBranch(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
         'branch_b',
       )).resolves.toBe(undefined);
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledTimes(0);
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(0);
     })
   })
 
-  describe('mergeToRelated', () => {
-    beforeEach(() => {
-      (mergeBranchTo as any).mockReturnValue(undefined);
-      (createPullRequestIfNotAlreadyExists as any).mockReturnValue();
-    })
+  describe('getBranchesRelatedToPD', () => {
     it('should rejects if serial number was not found for the PR target branch', async () => {
-      expect(mergeToRelated(
-        {} as any,
-        GITHUB_PULL_REQUEST_MOCK as any,
+      expect(getBranchesRelatedToPD(
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         {
           releaseBranchPrfix: 'releaseBranchPrfix',
           releaseBranchTaskPrefix: 'releaseBranchTaskPrefix',
         } as any,
         [''],
-      )).rejects.toThrow('Failed to determine PR target branch');
+      )).rejects.toThrow(expect.stringContaining('Failed to define a serial number for the PR branch'));
     })
-    it('should resolves with undefined if no branches to merge were found', async () => {
-      (mergeBranchTo as any).mockClear();
-      expect(mergeToRelated(
-        {} as any,
-        GITHUB_PULL_REQUEST_MOCK as any,
+    it('should resolves with empty branches if no branches related found', async () => {
+      expect(getBranchesRelatedToPD(
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         {
           releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
           releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
         } as any,
         [''],
-      )).resolves.toBe(undefined);
-      expect(mergeBranchTo).not.toBeCalled();
+      )).resolves.toBe([]);
     })
-    it('should resolves with undefined if PR branch succesfully merged to a branch with upper version', async () => {
-      (mergeBranchTo as any).mockClear();
-      const octokit = {} as any;
+    it('should resolves with all branches, sorted by serial number, which has a version upper than PRs branch', async () => {
       const branchTargetName = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1`;
+      const branchTargetName1 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}10v9999999`;
+      const branchTargetName2 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2`;
+      const branchTargetName3 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}01`;
+      const branchTargetName4 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}0_____999999`;
+      const expected = [
+        branchTargetName4,
+        branchTargetName,
+        branchTargetName2,
+        branchTargetName3,
+        branchTargetName1,
+      ];
 
-      await expect(mergeToRelated(
-        octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+      await expect(getBranchesRelatedToPD(
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         {
           releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
           releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
         } as any,
-        [branchTargetName],
-      )).resolves.toBe(undefined);
-      expect(mergeBranchTo).toBeCalledWith(
-        octokit,
-        GITHUB_PULL_REQUEST_MOCK,
-        branchTargetName,
-        GITHUB_PULL_REQUEST_MOCK.head.ref
-      );
+        [
+          branchTargetName,
+          branchTargetName1,
+          branchTargetName2,
+          branchTargetName3,
+          branchTargetName4
+        ],
+      )).resolves.toEqual(expected);
     })
-    it('should resolves with undefined if PR branch succesfully merged to multiple branches with upper version', async () => {
+    it('should resolves with no branches, which has a version below or equal the PRs branch', async () => {
+      const prBranchName = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}9`;
+      const branchTargetEqualNumber = prBranchName;
+      const branchTargetBelowNumber1 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}0`;
+      const branchTargetBelowNumber2 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}8`;
+      const expectedNotContain = [
+        branchTargetEqualNumber,
+        branchTargetBelowNumber1,
+        branchTargetBelowNumber2,
+      ];
+
+      await expect(getBranchesRelatedToPD(
+        { base: { ref: prBranchName } } as any,
+        {
+          releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
+          releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
+        } as any,
+        expectedNotContain,
+      )).resolves.not.toEqual(expect.arrayContaining(expectedNotContain));
+    })
+    it('should resolves with no branches, which has a ref prefix not related to the PR branch', async () => {
+      const prBranchName = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}_/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix1 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}//${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix2 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}1/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix3 = `/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix4 = `v${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix5 = `0${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const expectedNotContained = [
+        branchTargerWithAnotherBranchPrefix,
+        branchTargerWithAnotherBranchPrefix1,
+        branchTargerWithAnotherBranchPrefix2,
+        branchTargerWithAnotherBranchPrefix3,
+        branchTargerWithAnotherBranchPrefix4,
+        branchTargerWithAnotherBranchPrefix5,
+      ];
+      const expectedContained = [
+        `${prBranchName}1`,
+        `${prBranchName}0`,
+      ];
+      const result = await getBranchesRelatedToPD(
+        { base: { ref: prBranchName } } as any,
+        {
+          releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
+          releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
+        } as any,
+        [...expectedNotContained, ...expectedContained],
+      );
+    
+      expect(result).not.toEqual(expect.arrayContaining(expectedNotContained));
+      expect(result).toEqual(expect.arrayContaining(expectedContained));
+    })
+    it('should resolves with no branches, which has a ref branch task prefix not related to the PR branch', async () => {
+      const prBranchName = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}-${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix1 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}_${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix2 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix3 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}0${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const branchTargerWithAnotherBranchPrefix4 = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX}/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME}v${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION}`;
+      const expectedNotContained = [
+        branchTargerWithAnotherBranchPrefix,
+        branchTargerWithAnotherBranchPrefix1,
+        branchTargerWithAnotherBranchPrefix2,
+        branchTargerWithAnotherBranchPrefix3,
+        branchTargerWithAnotherBranchPrefix4,
+      ];
+      const expectedContained = [
+        `${prBranchName}1`,
+        `${prBranchName}0`,
+      ];
+      const result = await getBranchesRelatedToPD(
+        { base: { ref: prBranchName } } as any,
+        {
+          releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
+          releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
+        } as any,
+        [...expectedNotContained, ...expectedContained],
+      );
+    
+      expect(result).not.toEqual(expect.arrayContaining(expectedNotContained));
+      expect(result).toEqual(expect.arrayContaining(expectedContained));
+    })
+  });
+
+  describe('getTargetBranchesNames', () => {
+    it('Should return empty array for empty list', () => {
+      expect(getTargetBranchesNames([])).toEqual([])
+    })
+    it('Should return array with the first element from the list', () => {
+      expect(getTargetBranchesNames(['1', '2', '3'])).toEqual(['1'])
+    })
+  })
+
+  describe('mergeToBranches', () => {
+    beforeEach(() => {
+      (mergeBranchTo as any).mockReturnValue(undefined);
+      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+    })
+    it('should resolves with undefined if no branches to merge', async () => {
+      (mergeBranchTo as any).mockClear();
+      expect(mergeToBranches(
+        {} as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
+        {
+          releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
+          releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
+        } as any,
+        [],
+      )).resolves.toBe(undefined);
+      expect(mergeBranchTo).not.toBeCalled();
+    })
+    it('should resolves with undefined if PR branch succesfully merged to multiple branches', async () => {
       (mergeBranchTo as any).mockClear();
       const octokit = {} as any;
-      const branchTargetNameFirst = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1`;
-      const branchTargetNameSecond = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2`;
+      const branchTargetNameFirst = `branch1`;
+      const branchTargetNameSecond = `branch2`;
 
-      await expect(mergeToRelated(
+      await expect(mergeToBranches(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         {
           releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
           releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
@@ -512,96 +701,86 @@ describe('merge-to-release module', () => {
       )).resolves.toBe(undefined);
       expect(mergeBranchTo).toBeCalledWith(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK,
+        GITHUB_PUSH_DESCRIPTION_MOCK,
         branchTargetNameFirst,
-        GITHUB_PULL_REQUEST_MOCK.head.ref
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref
       );
       expect(mergeBranchTo).toBeCalledWith(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK,
+        GITHUB_PUSH_DESCRIPTION_MOCK,
         branchTargetNameSecond,
-        GITHUB_PULL_REQUEST_MOCK.head.ref
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref
       );
     })
-    it('should not merge branches not related to the PR branch', async () => {
+
+    it('should merge only branches have a uniq names in the list', async () => {
       (mergeBranchTo as any).mockClear();
       const octokit = {} as any;
-      const branchTargetNameFirst = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1`;
-      const branchTargetNameSecond = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2`;
-      const notRelatedFirst = `notRelatedFirst`;
-      const notRelatedSecond = `notRelatedSecond`;
+      const branchTargetNameFirst = `branch1`;
+      const branchTargetNameSecond = `branch2`;
+      const branchTargetNameThird = `branch1`;
+      const branchTargetNameForth = `branch2`;
 
-      await expect(mergeToRelated(
+      await expect(mergeToBranches(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         {
           releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
           releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
         } as any,
-        [branchTargetNameFirst, notRelatedFirst, branchTargetNameSecond, notRelatedSecond],
+        [branchTargetNameFirst, branchTargetNameSecond, branchTargetNameThird, branchTargetNameForth],
       )).resolves.toBe(undefined);
-      expect(mergeBranchTo).not.toBeCalledWith(
-        expect.anything(),
-        expect.anything(),
-        notRelatedFirst,
-        expect.anything()
+      expect(mergeBranchTo).toBeCalledWith(
+        octokit,
+        GITHUB_PUSH_DESCRIPTION_MOCK,
+        branchTargetNameFirst,
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref
       );
-      expect(mergeBranchTo).not.toBeCalledWith(
-        expect.anything(),
-        expect.anything(),
-        notRelatedSecond,
-        expect.anything()
+      expect(mergeBranchTo).toBeCalledWith(
+        octokit,
+        GITHUB_PUSH_DESCRIPTION_MOCK,
+        branchTargetNameSecond,
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref
       );
+      expect(mergeBranchTo).toBeCalledTimes(2);
     })
 
-    it('should merge branches in ascending order related to it serial number', async () => {
+    it('should merge branches in order from the given array', async () => {
       (mergeBranchTo as any).mockClear();
       const octokit = {} as any;
-      const branchTargetNameSame = GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME;
-      const branchTargetNameFirst = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}0`;
-      const branchTargetNameSecond = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1__999999999999999999`;
-      const branchTargetNameThird = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}00`;
-      const branchTargetNameForth = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}01_dfkfjd___9999999999999999999999`;
-      const notRelatedFirst = `notRelatedFirst`;
-      const notRelatedSecond = `notRelatedSecond`;
+      const branchTargetNameFirst = `branch1`;
+      const branchTargetNameSecond = `branch2`;
+      const branchTargetNameThird = `branch3`;
 
-      await expect(mergeToRelated(
+      await expect(mergeToBranches(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         {
           releaseBranchPrfix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX,
           releaseBranchTaskPrefix: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME,
         } as any,
-        [branchTargetNameThird, branchTargetNameSame, branchTargetNameForth, notRelatedFirst, branchTargetNameSecond, notRelatedSecond, branchTargetNameFirst],
+        [branchTargetNameFirst, branchTargetNameSecond, branchTargetNameThird],
       )).resolves.toBe(undefined);
-      expect(mergeBranchTo).toBeCalledTimes(4);
       expect(mergeBranchTo).toHaveBeenNthCalledWith(
         1,
-        expect.anything(),
-        expect.anything(),
+        octokit,
+        GITHUB_PUSH_DESCRIPTION_MOCK,
         branchTargetNameFirst,
-        expect.anything()
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref
       );
       expect(mergeBranchTo).toHaveBeenNthCalledWith(
         2,
-        expect.anything(),
-        expect.anything(),
+        octokit,
+        GITHUB_PUSH_DESCRIPTION_MOCK,
         branchTargetNameSecond,
-        expect.anything()
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref
       );
       expect(mergeBranchTo).toHaveBeenNthCalledWith(
         3,
-        expect.anything(),
-        expect.anything(),
+        octokit,
+        GITHUB_PUSH_DESCRIPTION_MOCK,
         branchTargetNameThird,
-        expect.anything()
-      );
-      expect(mergeBranchTo).toHaveBeenNthCalledWith(
-        4,
-        expect.anything(),
-        expect.anything(),
-        branchTargetNameForth,
-        expect.anything()
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref
       );
     })
 
@@ -609,67 +788,64 @@ describe('merge-to-release module', () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
       const octokit = {} as any;
-      const branchTargetNameFirst = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1`;
-      const branchTargetNameSecond = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2`;
-      const notRelatedFirst = `notRelatedFirst`;
-      const notRelatedSecond = `notRelatedSecond`;
+      const branchTargetNameFirst = `branch1`;
+      const branchTargetNameSecond = `branch2`;
+      const branchTargetNameThird = `branch3`;
 
-      await mergeToRelated(
+      await mergeToBranches(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
-        [branchTargetNameFirst, notRelatedFirst, branchTargetNameSecond, notRelatedSecond],
+        [branchTargetNameFirst, branchTargetNameSecond, branchTargetNameThird],
       )
       expect(mergeBranchTo).toBeCalledTimes(1);
     })
 
-    it('should call once createPullRequestIfNotAlreadyExists with target branch which failed cause of conflict while a first merge conflict', async () => {
+    it('should call once createpushDescriptionIfNotAlreadyExists with target branch which failed cause of conflict while a first merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
       const octokit = {} as any;
-      const branchTargetNameFirst = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1`;
-      const branchTargetNameSecond = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2`;
-      const notRelatedFirst = `notRelatedFirst`;
-      const notRelatedSecond = `notRelatedSecond`;
+      const branchTargetNameFirst = `branch1`;
+      const branchTargetNameSecond = `branch2`;
+      const branchTargetNameThird = `branch3`;
 
-      await mergeToRelated(
+      await mergeToBranches(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
-        [branchTargetNameFirst, notRelatedFirst, branchTargetNameSecond, notRelatedSecond],
+        [branchTargetNameFirst, branchTargetNameSecond, branchTargetNameThird],
       )
-      expect(createPullRequestIfNotAlreadyExists).toHaveBeenCalledTimes(1)
-      expect(createPullRequestIfNotAlreadyExists).toBeCalledWith(
+      expect(createpushDescriptionIfNotAlreadyExists).toHaveBeenCalledTimes(1)
+      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledWith(
         expect.anything(),
         expect.anything(),
         branchTargetNameFirst,
-        GITHUB_PULL_REQUEST_MOCK.head.ref,
+        GITHUB_PUSH_DESCRIPTION_MOCK.head.ref,
         CONTEXT_ENV_MOCK.automergePrLabel
       );
     })
 
-    it('should rejects if createPullRequestIfNotAlreadyExists throws', async () => {
+    it('should rejects if createpushDescriptionIfNotAlreadyExists throws', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createPullRequestIfNotAlreadyExists as any).mockClear();
-      (createPullRequestIfNotAlreadyExists as any).mockImplementation(() => {
+      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createpushDescriptionIfNotAlreadyExists as any).mockImplementation(() => {
         throw new Error('Failed');
       });
 
-      expect(createPullRequestIfNotAlreadyExists).toThrow();
+      expect(createpushDescriptionIfNotAlreadyExists).toThrow();
 
       const octokit = {} as any;
-      const branchTargetNameFirst = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1`;
-      const branchTargetNameSecond = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2`;
-      const notRelatedFirst = `notRelatedFirst`;
-      const notRelatedSecond = `notRelatedSecond`;
+      const branchTargetNameFirst = `branch1`;
+      const branchTargetNameSecond = `branch2`;
+      const branchTargetNameThird = `branch3`;
 
-      await expect(mergeToRelated(
+      await expect(mergeToBranches(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
-        [branchTargetNameFirst, notRelatedFirst, branchTargetNameSecond, notRelatedSecond],
+        [branchTargetNameFirst, branchTargetNameSecond, branchTargetNameThird],
       )).rejects.toThrow(); 
     })
 
@@ -677,16 +853,15 @@ describe('merge-to-release module', () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockRejectedValueOnce();
       const octokit = {} as any;
-      const branchTargetNameFirst = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1`;
-      const branchTargetNameSecond = `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2`;
-      const notRelatedFirst = `notRelatedFirst`;
-      const notRelatedSecond = `notRelatedSecond`;
+      const branchTargetNameFirst = `branch1`;
+      const branchTargetNameSecond = `branch2`;
+      const branchTargetNameThird = `branch3`;
 
-      await expect(mergeToRelated(
+      await expect(mergeToBranches(
         octokit,
-        GITHUB_PULL_REQUEST_MOCK as any,
+        GITHUB_PUSH_DESCRIPTION_MOCK as any,
         CONTEXT_ENV_MOCK,
-        [branchTargetNameFirst, notRelatedFirst, branchTargetNameSecond, notRelatedSecond],
+        [branchTargetNameFirst, branchTargetNameSecond, branchTargetNameThird],
       )).rejects.toBe(undefined)
       expect(mergeBranchTo).toBeCalledTimes(1);
     })

@@ -519,7 +519,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.init = exports.initContextEnv = void 0;
+exports.init = exports.getPushDescription = exports.initContextEnv = void 0;
 const core = __importStar(__webpack_require__(470));
 const gitHub = __importStar(__webpack_require__(469));
 const log_1 = __webpack_require__(936);
@@ -546,6 +546,49 @@ exports.initContextEnv = () => {
     };
 };
 /**
+ * Make a push description from a
+ * github context description given
+ *
+ * @param {typeof gitHub.context} context
+ * @exports
+ * @returns {IGitHubPushDescription}
+ * @throws - if some property is not exits in the context it will throw
+ */
+function getPushDescription(context) {
+    var _a;
+    //https://developer.github.com/webhooks/event-payloads/#pull_request
+    if (context.payload.pull_request) {
+        // pull request interface mathes to the IGitHubPushDescription
+        return context.payload.pull_request;
+    }
+    //https://developer.github.com/webhooks/event-payloads/#push
+    const repoName = (_a = context.payload.repository) === null || _a === void 0 ? void 0 : _a.name;
+    if (!repoName) {
+        throw new Error('Failed to get repository name');
+    }
+    // If pushed not according to a pull request,
+    // then base.ref === head.ref and equals to
+    // the branch were commit
+    const pushedToBranchRef = context.payload.ref;
+    log_1.debug('getPushDescription::context', context);
+    return {
+        base: {
+            ref: pushedToBranchRef,
+            repo: {
+                name: repoName,
+                owner: {
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    login: context.payload.repository.owner.login,
+                },
+            },
+        },
+        head: {
+            ref: pushedToBranchRef,
+        },
+    };
+}
+exports.getPushDescription = getPushDescription;
+/**
  * Prepare the action running to work
  * and return the common values
  * which are necessary to work with.
@@ -559,25 +602,23 @@ function init() {
     if (!context) {
         throw new Error('Failed to get GitHub context');
     }
-    const { payload: { pull_request }, } = context;
-    // Get pull request related to this action
-    if (!pull_request) {
-        throw new Error('The current pull request is not available in the github context');
+    const pushDescription = getPushDescription(context);
+    log_1.debug('init::pushDescription', pushDescription);
+    // Get event description related to this action
+    if (!pushDescription) {
+        throw new Error('Failed to get event description');
     }
     const contextEnv = exports.initContextEnv();
     log_1.debug('init with context env', contextEnv);
     // TODO - cause the env variable $INPUT_RELEASEBRANCHPREFIX is not defined in the workflow
     // for the "releaseBranchPrfix" input, this workaround is used. May be $INPUT_RELEASEBRANCHPREFIX
     // is not defined only for the default values.
-    const currentBranchSerialNumber = merge_to_release_1.getBranchNameReleaseSerialNumber(github_common_1.getPRTargetBranchName(pull_request), contextEnv.releaseBranchPrfix, contextEnv.releaseBranchTaskPrefix);
+    const currentBranchSerialNumber = merge_to_release_1.getBranchNameReleaseSerialNumber(github_common_1.getPRTargetBranchName(pushDescription), contextEnv.releaseBranchPrfix, contextEnv.releaseBranchTaskPrefix);
     if (!currentBranchSerialNumber) {
         log_1.debug('Skip actions cause the branch is not necessary to be handled');
         return;
     }
-    const { changed_files } = pull_request;
-    if (!changed_files) {
-        log_1.error(new Error('There are no files changed in the pull request'));
-    }
+    log_1.debug(`Branch serial number is ${currentBranchSerialNumber}`);
     const { token: gitHubToken } = contextEnv;
     let octokit;
     // initialize the Octokit instance
@@ -589,7 +630,7 @@ function init() {
         throw new Error('Failed to connect to the Octokit');
     }
     return {
-        pullRequest: pull_request,
+        pushDescription,
         octokit,
         contextEnv,
     };
@@ -864,43 +905,43 @@ const github_1 = __webpack_require__(272);
 /**
  * Get a name of a PR's branch
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a branch from which the PR was created
  */
-function getPRBranchName(pullRequest) {
-    return pullRequest.head.ref;
+function getPRBranchName(pushDescription) {
+    return pushDescription.head.ref;
 }
 exports.getPRBranchName = getPRBranchName;
 /**
  * Get a name of PR's repository
  *
  * @export
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string}
  */
-function getPRRepo(pullRequest) {
-    return pullRequest.base.repo.name;
+function getPRRepo(pushDescription) {
+    return pushDescription.base.repo.name;
 }
 exports.getPRRepo = getPRRepo;
 /**
  * Get a login of PR's repository owner
  *
  * @export
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string}
  */
-function getPRRepoOwner(pullRequest) {
-    return pullRequest.base.repo.owner.login;
+function getPRRepoOwner(pushDescription) {
+    return pushDescription.base.repo.owner.login;
 }
 exports.getPRRepoOwner = getPRRepoOwner;
 /**
  * Get a name of a target branch for the PR
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a target branch the PR
  */
-function getPRTargetBranchName(pullRequest) {
-    return pullRequest.base.ref;
+function getPRTargetBranchName(pushDescription) {
+    return pushDescription.base.ref;
 }
 exports.getPRTargetBranchName = getPRTargetBranchName;
 /**
@@ -943,7 +984,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createPullRequestIfNotAlreadyExists = void 0;
+exports.createpushDescriptionIfNotAlreadyExists = void 0;
 const repo_api_1 = __webpack_require__(511);
 const log_1 = __webpack_require__(936);
 /**
@@ -953,40 +994,40 @@ const log_1 = __webpack_require__(936);
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} brnachName
  * @param {string} sourceBranchName
- * @param {string} pullRequestLabel - a label for pull request if created automatically
+ * @param {string} pushDescriptionLabel - a label for pull request if created automatically
  * @returns {(Promise<void>)} - returns void if a pull request is exists or was successfully created
  */
-function createPullRequestIfNotAlreadyExists(octokit, pullRequest, targetBranchName, sourceBranchName, pullRequestLabel) {
+function createpushDescriptionIfNotAlreadyExists(octokit, pushDescription, targetBranchName, sourceBranchName, pushDescriptionLabel) {
     return __awaiter(this, void 0, void 0, function* () {
-        log_1.debug(`createPullRequestIfNotAlreadyExists::start::from ${sourceBranchName} to ${targetBranchName} branch`);
-        const isExists = yield repo_api_1.checkActivePRExists(octokit, pullRequest, targetBranchName, sourceBranchName);
+        log_1.debug(`createpushDescriptionIfNotAlreadyExists::start::from ${sourceBranchName} to ${targetBranchName} branch`);
+        const isExists = yield repo_api_1.checkActivePRExists(octokit, pushDescription, targetBranchName, sourceBranchName);
         if (isExists) {
-            log_1.debug(`createPullRequestIfNotAlreadyExists::do nothing cause pull request from ${sourceBranchName} to ${targetBranchName} branch is exists`);
+            log_1.debug(`createpushDescriptionIfNotAlreadyExists::do nothing cause pull request from ${sourceBranchName} to ${targetBranchName} branch is exists`);
             // do nothing if a PR is already exists for this branches pair
             return;
         }
-        log_1.debug(`createPullRequestIfNotAlreadyExists::Create new pull request from ${sourceBranchName} to ${targetBranchName} branch`);
-        const pullRequestNumber = yield repo_api_1.createNewPR(octokit, pullRequest, targetBranchName, sourceBranchName);
-        if (typeof pullRequestNumber !== 'number') {
+        log_1.debug(`createpushDescriptionIfNotAlreadyExists::Create new pull request from ${sourceBranchName} to ${targetBranchName} branch`);
+        const pushDescriptionNumber = yield repo_api_1.createNewPR(octokit, pushDescription, targetBranchName, sourceBranchName);
+        if (typeof pushDescriptionNumber !== 'number') {
             throw new Error('Pull request was created with unknown number');
         }
-        log_1.debug(`createPullRequestIfNotAlreadyExists::Pull request from ${sourceBranchName} to ${targetBranchName} branch was created with number ${pullRequestNumber}`);
-        if (pullRequestLabel && pullRequestLabel.trim()) {
-            log_1.debug(`createPullRequestIfNotAlreadyExists::Pull request from ${sourceBranchName} to ${targetBranchName} add the label ${pullRequestLabel} to the Pull Request created`);
+        log_1.debug(`createpushDescriptionIfNotAlreadyExists::Pull request from ${sourceBranchName} to ${targetBranchName} branch was created with number ${pushDescriptionNumber}`);
+        if (pushDescriptionLabel && pushDescriptionLabel.trim()) {
+            log_1.debug(`createpushDescriptionIfNotAlreadyExists::Pull request from ${sourceBranchName} to ${targetBranchName} add the label ${pushDescriptionLabel} to the Pull Request created`);
             try {
-                yield repo_api_1.addLabelForPr(octokit, pullRequest, pullRequestNumber, pullRequestLabel.trim());
+                yield repo_api_1.addLabelForPr(octokit, pushDescription, pushDescriptionNumber, pushDescriptionLabel.trim());
             }
             catch (err) {
-                log_1.debug(`createPullRequestIfNotAlreadyExists::failed to add label for Pull request from ${sourceBranchName} to ${targetBranchName}`);
+                log_1.debug(`createpushDescriptionIfNotAlreadyExists::failed to add label for Pull request from ${sourceBranchName} to ${targetBranchName}`);
                 log_1.error(err);
             }
         }
     });
 }
-exports.createPullRequestIfNotAlreadyExists = createPullRequestIfNotAlreadyExists;
+exports.createpushDescriptionIfNotAlreadyExists = createpushDescriptionIfNotAlreadyExists;
 
 
 /***/ }),
@@ -3735,21 +3776,22 @@ const log_1 = __webpack_require__(936);
 const github_common_1 = __webpack_require__(312);
 /**
  * List branches via the GitHub API
+ * https://developer.github.com/v3/git/refs/#list-matching-references
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {number} [perPage=100] - how many items to fetch on one page
  * @param {number} [page=1] - requested page number
  * @param {string} [owner]
  * @throws {Error}
  * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
  */
-function fetchBranchesList(octokit, pullRequest, branchPrefix, page = 1, perPage = 100) {
+function fetchBranchesList(octokit, pushDescription, branchPrefix, page = 1, perPage = 100) {
     return __awaiter(this, void 0, void 0, function* () {
         const requestParams = {
-            owner: github_common_1.getPRRepoOwner(pullRequest),
-            repo: github_common_1.getPRRepo(pullRequest),
+            owner: github_common_1.getPRRepoOwner(pushDescription),
+            repo: github_common_1.getPRRepo(pushDescription),
             ref: github_common_1.getBranchRefPrefix(branchPrefix),
             page,
             per_page: perPage
@@ -3767,18 +3809,18 @@ exports.fetchBranchesList = fetchBranchesList;
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {IContextEnv} contextEnv
  * @returns {(Promise<Array<string> | undefined>)}
  * @throws
  */
-function fetchReleaseBranchesNamesByAPI(octokit, pullRequest, contextEnv) {
+function fetchReleaseBranchesNamesByAPI(octokit, pushDescription, contextEnv) {
     return __awaiter(this, void 0, void 0, function* () {
         const perPage = 100;
         const branches = [];
         let pageIdx = 0;
         while (pageIdx += 1) {
-            const branchesDescriptions = yield fetchBranchesList(octokit, pullRequest, contextEnv.releaseBranchPrfix, pageIdx, perPage);
+            const branchesDescriptions = yield fetchBranchesList(octokit, pushDescription, contextEnv.releaseBranchPrfix, pageIdx, perPage);
             log_1.debug('fetched branches description branchesDescriptions', branchesDescriptions);
             branches.push(...branchesDescriptions.map(github_common_1.getBranchNameByRefDescription));
             if (branchesDescriptions.length < perPage) {
@@ -3794,17 +3836,17 @@ exports.fetchReleaseBranchesNamesByAPI = fetchReleaseBranchesNamesByAPI;
  * https://developer.github.com/v3/repos/merging/#merge-a-branch
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName
  * @param {string} sourceBranchName
  * @returns {undefined | false} - return undefined if no error, false - if merge conflict
  * @throws - if any other error
  */
-function mergeBranchTo(octokit, pullRequest, targetBranchName, sourceBranchName) {
+function mergeBranchTo(octokit, pushDescription, targetBranchName, sourceBranchName) {
     return __awaiter(this, void 0, void 0, function* () {
         const requestParams = {
-            owner: github_common_1.getPRRepoOwner(pullRequest),
-            repo: github_common_1.getPRRepo(pullRequest),
+            owner: github_common_1.getPRRepoOwner(pushDescription),
+            repo: github_common_1.getPRRepo(pushDescription),
             base: targetBranchName,
             head: sourceBranchName,
         };
@@ -3847,17 +3889,17 @@ exports.mergeBranchTo = mergeBranchTo;
  * https://developer.github.com/v3/pulls/#list-pull-requests
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
  * @param {string} sourceBranchName - e.g. 'feature/TASK-11'
  * @returns {boolean} - true if a PR related to branches was found
  * @throws - if any other error
  */
-function checkActivePRExists(octokit, pullRequest, targetBranchName, sourceBranchName) {
+function checkActivePRExists(octokit, pushDescription, targetBranchName, sourceBranchName) {
     return __awaiter(this, void 0, void 0, function* () {
         const requestConf = {
-            owner: github_common_1.getPRRepoOwner(pullRequest),
-            repo: github_common_1.getPRRepo(pullRequest),
+            owner: github_common_1.getPRRepoOwner(pushDescription),
+            repo: github_common_1.getPRRepo(pushDescription),
             base: targetBranchName,
             head: sourceBranchName,
             state: "open",
@@ -3881,17 +3923,17 @@ exports.checkActivePRExists = checkActivePRExists;
  * https://developer.github.com/v3/pulls/#create-a-pull-request
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
  * @param {string} sourceBranchName - e.g. 'feature/TASK-11'
  * @returns {number} - returns a number of pull request created
  * @throws - if any other error
  */
-function createNewPR(octokit, pullRequest, targetBranchName, sourceBranchName) {
+function createNewPR(octokit, pushDescription, targetBranchName, sourceBranchName) {
     return __awaiter(this, void 0, void 0, function* () {
         const requestConf = {
-            owner: github_common_1.getPRRepoOwner(pullRequest),
-            repo: github_common_1.getPRRepo(pullRequest),
+            owner: github_common_1.getPRRepoOwner(pushDescription),
+            repo: github_common_1.getPRRepo(pushDescription),
             base: targetBranchName,
             head: sourceBranchName,
             title: `Merge release branch ${sourceBranchName} to the release branch ${targetBranchName}`,
@@ -3919,17 +3961,17 @@ exports.createNewPR = createNewPR;
  *
  * @export
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {number} prNumber
  * @param {(string | string[])} label - one or more labels to add
  * @returns {Promise<void>} - return nothing if successfully added
  * @throws - if unknown code is returned
  */
-function addLabelForPr(octokit, pullRequest, prNumber, label) {
+function addLabelForPr(octokit, pushDescription, prNumber, label) {
     return __awaiter(this, void 0, void 0, function* () {
         const requestConf = {
-            owner: github_common_1.getPRRepoOwner(pullRequest),
-            repo: github_common_1.getPRRepo(pullRequest),
+            owner: github_common_1.getPRRepoOwner(pushDescription),
+            repo: github_common_1.getPRRepo(pushDescription),
             issue_number: prNumber,
             labels: Array.isArray(label) ? label : [label],
         };
@@ -4818,18 +4860,27 @@ function run() {
             if (!initResult) {
                 return;
             }
-            const { pullRequest, octokit, contextEnv } = initResult;
-            const branchesList = yield repo_api_1.fetchReleaseBranchesNamesByAPI(octokit, pullRequest, contextEnv);
+            const { pushDescription, octokit, contextEnv } = initResult;
+            const branchesList = yield repo_api_1.fetchReleaseBranchesNamesByAPI(octokit, pushDescription, contextEnv);
             log_1.debug('Fetched branches', branchesList);
             if (!branchesList.length) {
                 throw new Error('No branches were found');
             }
-            // should merge to the main branch
-            log_1.debug('Merge to the main branch', contextEnv.mainBranchName);
-            yield merge_to_release_1.mergeSourceToBranch(octokit, pullRequest, contextEnv, contextEnv.mainBranchName);
-            log_1.debug('Merge to related branches', branchesList);
+            const relatedBrancheslist = yield merge_to_release_1.getBranchesRelatedToPD(pushDescription, contextEnv, branchesList);
+            debugger;
+            log_1.debug('Related branches', relatedBrancheslist);
+            const targetBranches = merge_to_release_1.getTargetBranchesNames(relatedBrancheslist);
+            debugger;
+            if (!targetBranches.length) {
+                debugger;
+                // should merge to the main branch if there is no related branches exists
+                log_1.debug('Merge to the main branch', contextEnv.mainBranchName);
+                yield merge_to_release_1.mergeSourceToBranch(octokit, pushDescription, contextEnv, contextEnv.mainBranchName);
+                return;
+            }
+            log_1.debug('Merge to related branches', targetBranches);
             // should merge to related releases
-            yield merge_to_release_1.mergeToRelated(octokit, pullRequest, contextEnv, branchesList);
+            yield merge_to_release_1.mergeToBranches(octokit, pushDescription, contextEnv, targetBranches);
         }
         catch (err) {
             log_1.error(err);
@@ -6359,13 +6410,16 @@ Object.defineProperty(exports, '__esModule', { value: true });
 var request = __webpack_require__(753);
 var universalUserAgent = __webpack_require__(796);
 
-const VERSION = "4.5.2";
+const VERSION = "4.5.3";
 
 class GraphqlError extends Error {
   constructor(request, response) {
     const message = response.data.errors[0].message;
     super(message);
     Object.assign(this, response.data);
+    Object.assign(this, {
+      headers: response.headers
+    });
     this.name = "GraphqlError";
     this.request = request; // Maintains proper stack trace (only available on V8)
 
@@ -6398,7 +6452,14 @@ function graphql(request, query, options) {
   }, {});
   return request(requestOptions).then(response => {
     if (response.data.errors) {
+      const headers = {};
+
+      for (const key of Object.keys(response.headers)) {
+        headers[key] = response.headers[key];
+      }
+
       throw new GraphqlError(requestOptions, {
+        headers,
         data: response.data
       });
     }
@@ -6459,12 +6520,29 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.mergeToRelated = exports.mergeSourceToBranch = exports.getBranchesWithUpperSerialNumber = exports.getBranchNameReleaseSerialNumber = exports.getBranchNameWithoutPrefix = void 0;
+exports.mergeToBranches = exports.getTargetBranchesNames = exports.getBranchesRelatedToPD = exports.mergeSourceToBranch = exports.getBranchesWithUpperSerialNumber = exports.getBranchNameReleaseSerialNumber = exports.getBranchNameWithoutPrefix = exports.getBranchNameWithoutRefsPrefix = void 0;
 const path_1 = __importDefault(__webpack_require__(622));
 const log_1 = __webpack_require__(936);
 const github_common_1 = __webpack_require__(312);
 const repo_api_1 = __webpack_require__(511);
 const repo_1 = __webpack_require__(316);
+const github_1 = __webpack_require__(272);
+/**
+ * Remove refs/heads prefix from a branch name,
+ * if it is presented in a branches name string.
+ *
+ * @export
+ * @param {string} branchName
+ * @returns {string}
+ */
+function getBranchNameWithoutRefsPrefix(branchName) {
+    const regEx = new RegExp(`^[ ]*/*${github_1.GIT_REF_HEADS_PREFIX}`, 'i');
+    const matching = branchName.match(regEx);
+    return matching && matching[0]
+        ? branchName.slice(matching[0].length)
+        : branchName;
+}
+exports.getBranchNameWithoutRefsPrefix = getBranchNameWithoutRefsPrefix;
 /**
  * Return branch name without prefix
  * passed in releasePrefix argument.
@@ -6475,7 +6553,7 @@ const repo_1 = __webpack_require__(316);
  * @returns {string}
  */
 function getBranchNameWithoutPrefix(branchName, releasePrefix) {
-    const branchNameTrimmed = branchName.trim();
+    const branchNameTrimmed = getBranchNameWithoutRefsPrefix(branchName).trim();
     const releasePathTrimmed = branchName.includes('/')
         ? path_1.default.join(releasePrefix.trim(), '/')
         : releasePrefix.trim();
@@ -6547,14 +6625,14 @@ function getBranchesWithUpperSerialNumber(currentBranchName, branchesNamesList, 
     });
 }
 exports.getBranchesWithUpperSerialNumber = getBranchesWithUpperSerialNumber;
-function mergeSourceToBranch(octokit, pullRequest, contextEnv, targetBranchName) {
+function mergeSourceToBranch(octokit, pushDescription, contextEnv, targetBranchName) {
     return __awaiter(this, void 0, void 0, function* () {
-        const sourceBranchName = github_common_1.getPRBranchName(pullRequest);
-        const result = yield repo_api_1.mergeBranchTo(octokit, pullRequest, targetBranchName, sourceBranchName);
+        const sourceBranchName = github_common_1.getPRBranchName(pushDescription);
+        const result = yield repo_api_1.mergeBranchTo(octokit, pushDescription, targetBranchName, sourceBranchName);
         if (result === false) {
             // if a merge conflict
             log_1.debug(`The result of merging branch ${sourceBranchName} to the branch ${targetBranchName} is merge conflict`);
-            yield repo_1.createPullRequestIfNotAlreadyExists(octokit, pullRequest, targetBranchName, sourceBranchName, contextEnv.automergePrLabel);
+            yield repo_1.createpushDescriptionIfNotAlreadyExists(octokit, pushDescription, targetBranchName, sourceBranchName, contextEnv.automergePrLabel);
             return false;
         }
         else {
@@ -6567,44 +6645,76 @@ exports.mergeSourceToBranch = mergeSourceToBranch;
  * Merge PR's branch to related releases branches.
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {IContextEnv} contextEnv
  * @param {string[]} targetBranchesList
- * @returns {Promist<void>} - returns nothing after work
+ * @param {boolean} [mergeOnlyNextRelease=false] - merge only to the next release. If there is no next release related was found do nothing
+ * @returns {Promist<string[]>} - returns a brnaches related found
  * @throws {Error}
  * @exports
  */
-function mergeToRelated(octokit, pullRequest, contextEnv, releaseBranchesList) {
+function getBranchesRelatedToPD(pushDescription, contextEnv, releaseBranchesList) {
     return __awaiter(this, void 0, void 0, function* () {
-        const pullRequestTargetBranch = github_common_1.getPRTargetBranchName(pullRequest);
-        if (!pullRequestTargetBranch) {
+        const pushDescriptionTargetBranch = github_common_1.getPRTargetBranchName(pushDescription);
+        if (!pushDescriptionTargetBranch) {
             throw new Error('Failed to determine PR target branch');
         }
-        log_1.debug('mergeToRelated::start', 'Target branch name', pullRequestTargetBranch, 'releaseBranchesList:', releaseBranchesList, 'contextEnv', contextEnv);
-        const branchesNamesRelated = getBranchesWithUpperSerialNumber(pullRequestTargetBranch, releaseBranchesList, contextEnv.releaseBranchPrfix, contextEnv.releaseBranchTaskPrefix);
+        log_1.debug('mergeToRelated::start', 'Target branch name', pushDescriptionTargetBranch, 'releaseBranchesList:', releaseBranchesList, 'contextEnv', contextEnv);
+        const branchesNamesRelated = getBranchesWithUpperSerialNumber(pushDescriptionTargetBranch, releaseBranchesList, contextEnv.releaseBranchPrfix, contextEnv.releaseBranchTaskPrefix);
+        return branchesNamesRelated;
+    });
+}
+exports.getBranchesRelatedToPD = getBranchesRelatedToPD;
+/**
+ * returns target branch names
+ * where to merge a source
+ * branch
+ *
+ * @export
+ * @param {string[]} releaseBranchesList
+ * @returns {string[]}
+ */
+function getTargetBranchesNames(releaseBranchesList) {
+    return releaseBranchesList.length ? [releaseBranchesList[0]] : [];
+}
+exports.getTargetBranchesNames = getTargetBranchesNames;
+/**
+ * Merge PR's branch to related releases branches.
+ * Stop merging on first merge conflict
+ *
+ * @param {TGitHubOctokit} octokit
+ * @param {IGitHubPushDescription} pushDescription
+ * @param {IContextEnv} contextEnv
+ * @param {string[]} branchesNamesRelated - will try to merge PR's branch to every branch in this list
+ * @returns {Promist<void>} - returns a count of branches merged to and merge conflic status
+ * @throws {Error}
+ * @exports
+ */
+function mergeToBranches(octokit, pushDescription, contextEnv, branchesNamesRelated) {
+    return __awaiter(this, void 0, void 0, function* () {
         log_1.debug('mergeToRelated::branches related', branchesNamesRelated);
-        const branchesRelatedCount = branchesNamesRelated.length;
+        const branchesNamesUniq = Array.from(new Set(branchesNamesRelated));
+        const branchesRelatedCount = branchesNamesUniq.length;
+        let targetBranchIdx = 0;
         if (!branchesRelatedCount) {
             log_1.debug('mergeToRelated::no branches related was found');
             return;
         }
-        const sourceBranchName = github_common_1.getPRBranchName(pullRequest);
-        let targetBranchIdx = 0;
+        const sourceBranchName = github_common_1.getPRBranchName(pushDescription);
         while (targetBranchIdx < branchesRelatedCount) {
-            const brnachName = branchesNamesRelated[targetBranchIdx];
-            const result = yield mergeSourceToBranch(octokit, pullRequest, contextEnv, brnachName);
+            const branchName = branchesNamesUniq[targetBranchIdx];
+            const result = yield mergeSourceToBranch(octokit, pushDescription, contextEnv, branchName);
             if (result === false) {
-                // if a merge conflict
                 break;
             }
             else {
-                log_1.debug(`The result of merging branch ${sourceBranchName} to the branch ${brnachName}:`, result);
+                log_1.debug(`The result of merging branch ${sourceBranchName} to the branch ${branchName}:`, result);
             }
             targetBranchIdx += 1;
         }
     });
 }
-exports.mergeToRelated = mergeToRelated;
+exports.mergeToBranches = mergeToBranches;
 
 
 /***/ }),
@@ -6638,7 +6748,7 @@ exports.debug = (...args) => {
     if (process.env.NODE_ENV === 'test')
         return;
     console.log(`\n \x1b[43m######  \x1b[47m\x1b[30m(${debugItem}.)`);
-    console.log(...args.map((a, idx) => `   \x1b[32m${idx}. ${a && typeof a === "object" ? util_1.default.inspect(a, { colors: true, sorted: true }) : a}\n`));
+    console.log(...args.map((a, idx) => `   \x1b[32m${idx}. ${a && typeof a === "object" ? util_1.default.inspect(a, { colors: true, sorted: true, depth: 4 }) : a}\n`));
     console.log(`\x1b[47m\x1b[30m(${debugItem++}.)  \x1b[43m######\n`);
 };
 

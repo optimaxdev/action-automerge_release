@@ -1,5 +1,5 @@
-import {init, initContextEnv} from '../init';
-import { GITHUB_PULL_REQUEST_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME } from './__mocks__/github-entities.mock';
+import { init, initContextEnv, getPushDescription } from '../init';
+import { GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME } from './__mocks__/github-entities.mock';
 import {getInput} from '@actions/core';
 
 jest.mock('@actions/core');
@@ -48,6 +48,58 @@ describe('init module', () => {
       })
     })
   })
+
+  describe('getPushDescription', () => {
+    const contextPushEventMock = {
+      payload: {
+        ref: 'context.ref',
+        repository: {
+          name: 'context.payload.repository.name',
+          owner: {
+            login: 'context.payload.repository.owner.login',
+          }
+        }
+      }
+    } as any;
+    it('Should reutrn instance of pull request if the wokflow triggered by a pull request merged', () => {
+      const pullRequestSourceBranchRef = 'source_ref'
+      const pullRequestDescription = {
+        ...GITHUB_PUSH_DESCRIPTION_MOCK,
+        head: {
+          ...GITHUB_PUSH_DESCRIPTION_MOCK.head,
+          ref: pullRequestSourceBranchRef
+        }
+      };
+      const contextpushDescriptionEventMock = {
+        ...contextPushEventMock,
+        payload: {
+          ...contextPushEventMock.payload,
+          pull_request: pullRequestDescription
+        }
+      } as any;
+      expect(getPushDescription(contextpushDescriptionEventMock)).toBe(pullRequestDescription);
+    })
+    it('Should reutrn values according to the push event payload', () => {
+      expect(getPushDescription(contextPushEventMock)).toEqual({
+        base: {
+          ref: contextPushEventMock.payload.ref,
+          repo: {
+            name: contextPushEventMock.payload.repository.name,
+            owner: {
+              login: contextPushEventMock.payload.repository!.owner.login,
+            },
+          },
+        },
+        head: {
+          ref: contextPushEventMock.payload.ref,
+        },
+      });
+    })
+    it('Should throw if no context', () => {
+      expect(() => getPushDescription({} as any)).toThrow();
+    })
+  })
+
   describe('init', () => {
     it('init should not throw', () => {
       expect(() => init()).not.toThrow();
@@ -59,11 +111,11 @@ describe('init module', () => {
       expect(init()).toEqual(undefined);
     })
     it('init should return values expected', () => {
-      expect(init()).toEqual({
-        pullRequest: GITHUB_PULL_REQUEST_MOCK,
+      expect(init()).toEqual(expect.objectContaining({
+        pushDescription: expect.objectContaining(GITHUB_PUSH_DESCRIPTION_MOCK),
         octokit: 'octokit',
-        contextEnv: expect.objectContaining({})
-      });
+        contextEnv: expect.objectContaining({}),
+      }));
     })
     it('init should return undefined if a pull request is not related to the workflow', () => {
       const {getBranchNameReleaseSerialNumber} = require('../merge-to-release');

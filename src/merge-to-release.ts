@@ -1,10 +1,27 @@
 import path from 'path'
-import {TGitHubOctokit, TGitHubPullRequest} from './types/github'
+import {TGitHubOctokit, IGitHubPushDescription} from './types/github'
 import {IContextEnv} from './types/context'
 import {debug} from './lib/log'
 import {getPRTargetBranchName, getPRBranchName} from './lib/github-common'
 import {mergeBranchTo} from './lib/repo-api'
-import {createPullRequestIfNotAlreadyExists} from './utils/repo'
+import {createpushDescriptionIfNotAlreadyExists} from './utils/repo'
+import {GIT_REF_HEADS_PREFIX} from './const/github'
+
+/**
+ * Remove refs/heads prefix from a branch name,
+ * if it is presented in a branches name string.
+ *
+ * @export
+ * @param {string} branchName
+ * @returns {string}
+ */
+export function getBranchNameWithoutRefsPrefix(branchName: string): string {
+  const regEx = new RegExp(`^[ ]*/*${GIT_REF_HEADS_PREFIX}`, 'i')
+  const matching = branchName.match(regEx)
+  return matching && matching[0]
+    ? branchName.slice(matching[0].length)
+    : branchName
+}
 
 /**
  * Return branch name without prefix
@@ -19,7 +36,7 @@ export function getBranchNameWithoutPrefix(
   branchName: string,
   releasePrefix: string
 ): string {
-  const branchNameTrimmed = branchName.trim()
+  const branchNameTrimmed = getBranchNameWithoutRefsPrefix(branchName).trim()
   const releasePathTrimmed = branchName.includes('/')
     ? path.join(releasePrefix.trim(), '/')
     : releasePrefix.trim()
@@ -124,14 +141,14 @@ export function getBranchesWithUpperSerialNumber(
 
 export async function mergeSourceToBranch(
   octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+  pushDescription: IGitHubPushDescription,
   contextEnv: IContextEnv,
   targetBranchName: string
 ): Promise<undefined | false> {
-  const sourceBranchName = getPRBranchName(pullRequest)
+  const sourceBranchName = getPRBranchName(pushDescription)
   const result = await mergeBranchTo(
     octokit,
-    pullRequest,
+    pushDescription,
     targetBranchName,
     sourceBranchName
   )
@@ -140,9 +157,9 @@ export async function mergeSourceToBranch(
     debug(
       `The result of merging branch ${sourceBranchName} to the branch ${targetBranchName} is merge conflict`
     )
-    await createPullRequestIfNotAlreadyExists(
+    await createpushDescriptionIfNotAlreadyExists(
       octokit,
-      pullRequest,
+      pushDescription,
       targetBranchName,
       sourceBranchName,
       contextEnv.automergePrLabel
@@ -160,61 +177,98 @@ export async function mergeSourceToBranch(
  * Merge PR's branch to related releases branches.
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {IContextEnv} contextEnv
  * @param {string[]} targetBranchesList
- * @returns {Promist<void>} - returns nothing after work
+ * @param {boolean} [mergeOnlyNextRelease=false] - merge only to the next release. If there is no next release related was found do nothing
+ * @returns {Promist<string[]>} - returns a brnaches related found
  * @throws {Error}
  * @exports
  */
-export async function mergeToRelated(
-  octokit: TGitHubOctokit,
-  pullRequest: TGitHubPullRequest,
+export async function getBranchesRelatedToPD(
+  pushDescription: IGitHubPushDescription,
   contextEnv: IContextEnv,
   releaseBranchesList: string[]
-): Promise<void> {
-  const pullRequestTargetBranch = getPRTargetBranchName(pullRequest)
-  if (!pullRequestTargetBranch) {
+): Promise<string[]> {
+  const pushDescriptionTargetBranch = getPRTargetBranchName(pushDescription)
+  if (!pushDescriptionTargetBranch) {
     throw new Error('Failed to determine PR target branch')
   }
   debug(
     'mergeToRelated::start',
     'Target branch name',
-    pullRequestTargetBranch,
+    pushDescriptionTargetBranch,
     'releaseBranchesList:',
     releaseBranchesList,
     'contextEnv',
     contextEnv
   )
   const branchesNamesRelated = getBranchesWithUpperSerialNumber(
-    pullRequestTargetBranch,
+    pushDescriptionTargetBranch,
     releaseBranchesList,
     contextEnv.releaseBranchPrfix,
     contextEnv.releaseBranchTaskPrefix
   )
 
+  return branchesNamesRelated
+}
+
+/**
+ * returns target branch names
+ * where to merge a source
+ * branch
+ *
+ * @export
+ * @param {string[]} releaseBranchesList
+ * @returns {string[]}
+ */
+export function getTargetBranchesNames(
+  releaseBranchesList: string[]
+): string[] {
+  return releaseBranchesList.length ? [releaseBranchesList[0]] : []
+}
+
+/**
+ * Merge PR's branch to related releases branches.
+ * Stop merging on first merge conflict
+ *
+ * @param {TGitHubOctokit} octokit
+ * @param {IGitHubPushDescription} pushDescription
+ * @param {IContextEnv} contextEnv
+ * @param {string[]} branchesNamesRelated - will try to merge PR's branch to every branch in this list
+ * @returns {Promist<void>} - returns a count of branches merged to and merge conflic status
+ * @throws {Error}
+ * @exports
+ */
+export async function mergeToBranches(
+  octokit: TGitHubOctokit,
+  pushDescription: IGitHubPushDescription,
+  contextEnv: IContextEnv,
+  branchesNamesRelated: string[]
+): Promise<void> {
   debug('mergeToRelated::branches related', branchesNamesRelated)
-  const branchesRelatedCount = branchesNamesRelated.length
+  const branchesNamesUniq = Array.from(new Set(branchesNamesRelated))
+  const branchesRelatedCount = branchesNamesUniq.length
+  let targetBranchIdx = 0
+
   if (!branchesRelatedCount) {
     debug('mergeToRelated::no branches related was found')
     return
   }
-  const sourceBranchName = getPRBranchName(pullRequest)
-  let targetBranchIdx = 0
+  const sourceBranchName = getPRBranchName(pushDescription)
   while (targetBranchIdx < branchesRelatedCount) {
-    const brnachName = branchesNamesRelated[targetBranchIdx]
+    const branchName = branchesNamesUniq[targetBranchIdx]
     const result = await mergeSourceToBranch(
       octokit,
-      pullRequest,
+      pushDescription,
       contextEnv,
-      brnachName
+      branchName
     )
     if (result === false) {
-      // if a merge conflict
       break
     } else {
       debug(
-        `The result of merging branch ${sourceBranchName} to the branch ${brnachName}:`,
+        `The result of merging branch ${sourceBranchName} to the branch ${branchName}:`,
         result
       )
     }

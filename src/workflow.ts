@@ -2,7 +2,12 @@ import * as core from '@actions/core'
 import {init} from './init'
 import {fetchReleaseBranchesNamesByAPI} from './lib/repo-api'
 import {debug, error} from './lib/log'
-import {mergeSourceToBranch, mergeToRelated} from './merge-to-release'
+import {
+  getBranchesRelatedToPD,
+  mergeSourceToBranch,
+  mergeToBranches,
+  getTargetBranchesNames,
+} from './merge-to-release'
 
 export async function run(): Promise<void> {
   try {
@@ -14,27 +19,38 @@ export async function run(): Promise<void> {
       return
     }
 
-    const {pullRequest, octokit, contextEnv} = initResult
+    const {pushDescription, octokit, contextEnv} = initResult
     const branchesList = await fetchReleaseBranchesNamesByAPI(
       octokit,
-      pullRequest,
+      pushDescription,
       contextEnv
     )
     debug('Fetched branches', branchesList)
     if (!branchesList.length) {
       throw new Error('No branches were found')
     }
-    // should merge to the main branch
-    debug('Merge to the main branch', contextEnv.mainBranchName)
-    await mergeSourceToBranch(
-      octokit,
-      pullRequest,
+
+    const relatedBrancheslist = await getBranchesRelatedToPD(
+      pushDescription,
       contextEnv,
-      contextEnv.mainBranchName
+      branchesList
     )
-    debug('Merge to related branches', branchesList)
+    debug('Related branches', relatedBrancheslist)
+    const targetBranches = getTargetBranchesNames(relatedBrancheslist)
+    if (!targetBranches.length) {
+      // should merge to the main branch if there is no related branches exists
+      debug('Merge to the main branch', contextEnv.mainBranchName)
+      await mergeSourceToBranch(
+        octokit,
+        pushDescription,
+        contextEnv,
+        contextEnv.mainBranchName
+      )
+      return
+    }
+    debug('Merge to related branches', targetBranches)
     // should merge to related releases
-    await mergeToRelated(octokit, pullRequest, contextEnv, branchesList)
+    await mergeToBranches(octokit, pushDescription, contextEnv, targetBranches)
   } catch (err) {
     error(err)
     core.setFailed(err.message)

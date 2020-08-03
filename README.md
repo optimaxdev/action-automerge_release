@@ -1,5 +1,16 @@
 ![build-test](https://github.com/optimaxdev/action-automerge_release/workflows/build-test/badge.svg)
 
+# ISSUES
+
+**Merge to the next release branch not trigger subsequent action**
+
+According to ``https://github.community/t/push-from-action-does-not-trigger-subsequent-action/16854``:
+An action pushes code using the repository’s GITHUB_TOKEN, a new workflow will not run even when the repository contains a workflow configured to run when push events occur.
+Please create a personal access token in repo setting(write permission accordingly), replace GITHUB_TOKEN.
+Token should have admin access rights and write permission on the repository.
+
+
+
 # Auto Merging changes to following up release branches and "default" branch
 
 
@@ -7,40 +18,34 @@
 **What this for.**
 E.g. you have release branches:
 ``release/R-111``, ``release/R-112``, ``release/R-115`` and the default ``master`` branch.
-You made a hotfix for ``release/R-111`` and created a pull-request. After some time the pull request was accepted and merged to the release branch. This action will be triggered right after merge. It will check all existing branches and branches ``release/R-112``, ``release/R-115`` will be chosen to merge, cause number of them are higher then the number of the target PR branch ``release/R-111``. Merges will be perfrmed for ``release/R-112``, ``release/R-115`` and the ``mater`` branches. E.g. it has a merge-conflict while merging with ``release/R-112`` and in this case the process will be stopped on it. A pull request specialy marked with a label will be created. In this case only the ``master`` branch was merged and the ``release/R-115`` is waiting for resolution of the pull request created cause of merge-conflict on the branch ``release/R-112`` which has a smaller serial number (112 < 115). When the PR will be resolved another workflow will be triggered for merging changes from this PR to the ``release/R-115`` and ``master``. If another release branch ``release/R-116`` was created during resolving the merge-conflict, action will try to merge changes also for it.
- So, any updates for lower-versioned releases will be merged automatically on upper-versioned releases and the main branch also.
+You made a hotfix for ``release/R-111`` and pushed it. 
+This action will be triggered right after the merge. It will check all existing branches. And the branch ``release/R-112`` will be chosen to merge, cause number of them are higher then the number of the branch ``release/R-111``. 
+Merges will be perfrmed from ``release/R-111``, as source branch, to the ``release/R-112``, as the target branch.
+If there were no merge conflicts, a next action will be triggered. It will merge  the ``release/R-112``, as source branch, to the ``release/R-115``, as the target branch.
+E.g a merge-conflict was occurred. In this case the process is stopped and a pull request marked with a special label was created.
+``release/R-111`` was merged only with ``release/R-112``. When the merge conflict will be resolved and changes pushed in the ``release/R-115``, another action will be triggered, which won't find a branches with a serial number higher then ``115``, therefore it will merge ``release/R-115`` to the ``master`` branch.
+So, any updates on a lower-versioned releases will be merged automatically on upper-versioned releases and the main branch.
   
-
-
 ## Use this action
 
-
+This action has a special version which handles merging of pull requests. It's placed in the branch named ``feature/trigger_on-push``, so you can check how to use that.
 
 To use the automerge action you need to create a file ``root/.git/workflows/any_workflow_name.yml`` with content like this:
 ```yaml
 name: 'Automerge'
-on:
-pull_request:
- # only if PR closed
- types: [closed]
+on: push
 
 jobs:
-merge: # make sure the action works on a clean machine without building
-runs-on: ubuntu-latest
-steps:
-# run the action
- - uses: optimaxdev/action-automerge_release@master
- name: run_automerge
- id: run_automerge
- # PR must be successfully merged and repo succesfully initiated on the previous step
- if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
- with:
-  token: ${{ github.token }}
-  mainBranchName: 'master'
-  releaseBranchPrfix: 'rel'
-  releaseBranchTaskPrefix: 'v.'
-  automergePrLabel: 'automerge-conflict'
-
+  merge_to_releases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: optimaxdev/action-automerge_release@master
+        with:
+          token: ${{ secrets.TOKEN }}
+          mainBranchName: 'master'
+          releaseBranchPrfix: 'rel'
+          releaseBranchTaskPrefix: 'v.'
+          automergePrLabel: 'automerge-conflict'
 ```
 
 where:

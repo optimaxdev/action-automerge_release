@@ -1,8 +1,8 @@
 {
-  "name": "typescript-action",
+  "name": "action-automerge-release",
   "version": "0.0.0",
   "private": true,
-  "description": "TypeScript template action",
+  "description": "Automatically merge changes from a prevous to next releases and the default branch",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/optimaxdev/action-automerge_release.git"
   },
   "keywords": [
     "actions",
