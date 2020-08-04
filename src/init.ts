@@ -57,7 +57,7 @@ export function getPushDescription(
   // then base.ref === head.ref and equals to
   // the branch were commit
   const pushedToBranchRef = context.payload.ref
-  debug('getPushDescription::context', context)
+  debug('getPushDescription::context.payload', context.payload)
   return {
     base: {
       ref: pushedToBranchRef,
