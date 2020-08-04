@@ -9,21 +9,21 @@ const github_1 = require("../const/github");
 /**
  * Get a name of a PR's branch
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a branch from which the PR was created
  */
-function getPRBranchName(pullRequest) {
-    return pullRequest.target.ref;
+function getPRBranchName(pushDescription) {
+    return pushDescription.target.ref;
 }
 exports.getPRBranchName = getPRBranchName;
 /**
  * Get a name of a target branch for the PR
  *
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @returns {string} - A name of a target branch the PR
  */
-function getPRTargetBranchName(pullRequest) {
-    return pullRequest.base.ref;
+function getPRTargetBranchName(pushDescription) {
+    return pushDescription.base.ref;
 }
 exports.getPRTargetBranchName = getPRTargetBranchName;
 /**

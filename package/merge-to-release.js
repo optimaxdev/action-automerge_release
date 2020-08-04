@@ -52,23 +52,23 @@ exports.getBranchNameReleaseSerialNumber = getBranchNameReleaseSerialNumber;
  * Merge PR's branch to related releases branches.
  *
  * @param {TGitHubOctokit} octokit
- * @param {TGitHubPullRequest} pullRequest
+ * @param {IGitHubPushDescription} pushDescription
  * @param {IContextEnv} contextEnv
  * @param {string[]} targetBranchesList
  * @returns {Promist<void>} - returns nothing after work
  * @throws {Error}
  * @exports
  */
-function mergeToRelated(octokit, pullRequest, contextEnv, releaseBranchesList) {
+function mergeToRelated(octokit, pushDescription, contextEnv, releaseBranchesList) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!releaseBranchesList.length) {
             return;
         }
-        const pullRequestTargetBranch = github_common_1.getPRTargetBranchName(pullRequest);
-        if (!pullRequestTargetBranch) {
+        const pushDescriptionTargetBranch = github_common_1.getPRTargetBranchName(pushDescription);
+        if (!pushDescriptionTargetBranch) {
             throw new Error('Failed to determine PR target branch');
         }
-        log_1.debug('mergeToRelated::start', 'Target branch name', pullRequestTargetBranch, 'releaseBranchesList:', releaseBranchesList);
+        log_1.debug('mergeToRelated::start', 'Target branch name', pushDescriptionTargetBranch, 'releaseBranchesList:', releaseBranchesList);
     });
 }
 exports.mergeToRelated = mergeToRelated;

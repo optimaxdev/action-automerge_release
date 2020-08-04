@@ -1,13 +1,13 @@
-import { createPullRequestIfNotAlreadyExists } from '../utils/repo';
-import { GITHUB_PULL_REQUEST_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK, BRANCHES_REFS_LIST_MOCK } from './__mocks__/github-entities.mock';
-import { TGitHubOctokit, TGitHubPullRequest } from '../types/github';
+import { createpushDescriptionIfNotAlreadyExists } from '../utils/repo';
+import { GITHUB_PUSH_DESCRIPTION_MOCK, BRANCHES_REFS_LIST_MOCK } from './__mocks__/github-entities.mock';
+import { TGitHubOctokit, IGitHubPushDescription } from '../types/github';
 import {checkActivePRExists, createNewPR, addLabelForPr} from '../lib/repo-api';
 
 jest.mock('../lib/repo-api');
 
 describe('utils repo', () => {
   let octokit: TGitHubOctokit;
-  let pullRequest: TGitHubPullRequest;
+  let pushDescription: IGitHubPushDescription;
 
     beforeEach(() => {
       octokit = {
@@ -25,16 +25,16 @@ describe('utils repo', () => {
           addLabels: jest.fn(() => ({ status: 200 }))
         }
       } as unknown as TGitHubOctokit
-      pullRequest = {...GITHUB_PULL_REQUEST_MOCK} as unknown as TGitHubPullRequest
+      pushDescription = {...GITHUB_PUSH_DESCRIPTION_MOCK} as unknown as IGitHubPushDescription
     })
-  describe('createPullRequestIfNotAlreadyExists', () => {
+  describe('createpushDescriptionIfNotAlreadyExists', () => {
     it('Should not create a new pr if already exists for source and target branches', async () => {
       (checkActivePRExists as any).mockReturnValue(true)
       const targetBranchName = 'target_branch';
       const sourceBranchName = 'source_branch';
-      await createPullRequestIfNotAlreadyExists(
+      await createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         targetBranchName,
         sourceBranchName,
         'automergePrLabel'
@@ -56,14 +56,14 @@ describe('utils repo', () => {
       }) 
       expect(() => checkActivePRExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
       )).toThrow();
       expect(checkActivePRExists).toBeCalledTimes(1);
-      await expect(createPullRequestIfNotAlreadyExists(
+      await expect(createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
         'automergePrLabel'
@@ -75,9 +75,9 @@ describe('utils repo', () => {
     it('Should create a new PR if a PR related not exists ', async () => {
       jest.clearAllMocks();
       (checkActivePRExists as any).mockReturnValue(false)
-      await expect(createPullRequestIfNotAlreadyExists(
+      await expect(createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
       )).rejects.toThrow();
@@ -85,7 +85,7 @@ describe('utils repo', () => {
       expect(createNewPR).toBeCalledTimes(1)
       expect(createNewPR).toBeCalledWith(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
       )
@@ -98,14 +98,14 @@ describe('utils repo', () => {
       })
       expect(() => createNewPR(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
       )).toThrow();
       expect(createNewPR).toBeCalledTimes(1)
-      await expect(createPullRequestIfNotAlreadyExists(
+      await expect(createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
         'automergePrLabel'
@@ -114,7 +114,7 @@ describe('utils repo', () => {
       expect(createNewPR).toBeCalledTimes(2)
       expect(createNewPR).toHaveBeenLastCalledWith(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
       )
@@ -123,9 +123,9 @@ describe('utils repo', () => {
     it('Should rejects if not a numeric PR number returned after creation', async () => {
       jest.clearAllMocks();
       (createNewPR as any).mockReturnValue("1")
-      await expect(createPullRequestIfNotAlreadyExists(
+      await expect(createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
         'automergePrLabel'
@@ -137,9 +137,9 @@ describe('utils repo', () => {
     it('Should not create a label for PR created if a label is not provided', async () => {
       jest.clearAllMocks();
       (createNewPR as any).mockReturnValue(1)
-      await expect(createPullRequestIfNotAlreadyExists(
+      await expect(createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
       )).resolves.toBe(undefined);
@@ -147,7 +147,7 @@ describe('utils repo', () => {
       expect(createNewPR).toBeCalledTimes(1)
       expect(createNewPR).toBeCalledWith(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
       )
@@ -158,9 +158,9 @@ describe('utils repo', () => {
       const prNumberExpected = 1;
       const prLabelExpected = 'automergePrLabel';
       (createNewPR as any).mockReturnValue(prNumberExpected)
-      await expect(createPullRequestIfNotAlreadyExists(
+      await expect(createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
         prLabelExpected
@@ -170,7 +170,7 @@ describe('utils repo', () => {
       expect(addLabelForPr).toBeCalledTimes(1)
       expect(addLabelForPr).toHaveBeenLastCalledWith(
         octokit,
-        pullRequest,
+        pushDescription,
         prNumberExpected,
         prLabelExpected
       )
@@ -184,14 +184,14 @@ describe('utils repo', () => {
       })
       expect(() => addLabelForPr(
         octokit,
-        pullRequest,
+        pushDescription,
         1,
         'automergePrLabel'
       )).toThrow()
       expect(addLabelForPr).toBeCalledTimes(1)
-      await expect(createPullRequestIfNotAlreadyExists(
+      await expect(createpushDescriptionIfNotAlreadyExists(
         octokit,
-        pullRequest,
+        pushDescription,
         'target_branch',
         'source_branch',
         'automergePrLabel'

@@ -44,10 +44,10 @@ function run() {
             if (!initResult) {
                 return;
             }
-            const { pullRequest, octokit, contextEnv } = initResult;
-            const branchesList = yield repo_api_1.fetchReleaseBranchesNamesByAPI(octokit, pullRequest, contextEnv);
+            const { pushDescription, octokit, contextEnv } = initResult;
+            const branchesList = yield repo_api_1.fetchReleaseBranchesNamesByAPI(octokit, pushDescription, contextEnv);
             log_1.debug('Fetched branches', branchesList);
-            yield merge_to_release_1.mergeToRelated(octokit, pullRequest, contextEnv, branchesList);
+            yield merge_to_release_1.mergeToRelated(octokit, pushDescription, contextEnv, branchesList);
         }
         catch (err) {
             log_1.error(err);
