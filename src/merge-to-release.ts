@@ -5,6 +5,23 @@ import {debug} from './lib/log'
 import {getPRTargetBranchName, getPRBranchName} from './lib/github-common'
 import {mergeBranchTo} from './lib/repo-api'
 import {createpushDescriptionIfNotAlreadyExists} from './utils/repo'
+import {GIT_REF_HEADS_PREFIX} from './const/github'
+
+/**
+ * Remove refs/heads prefix from a branch name,
+ * if it is presented in a branches name string.
+ *
+ * @export
+ * @param {string} branchName
+ * @returns {string}
+ */
+export function getBranchNameWithoutRefsPrefix(branchName: string): string {
+  const regEx = new RegExp(`^[ ]*/*${GIT_REF_HEADS_PREFIX}`, 'i')
+  const matching = branchName.match(regEx)
+  return matching && matching[0]
+    ? branchName.slice(matching[0].length)
+    : branchName
+}
 
 /**
  * Return branch name without prefix
@@ -19,7 +36,7 @@ export function getBranchNameWithoutPrefix(
   branchName: string,
   releasePrefix: string
 ): string {
-  const branchNameTrimmed = branchName.trim()
+  const branchNameTrimmed = getBranchNameWithoutRefsPrefix(branchName).trim()
   const releasePathTrimmed = branchName.includes('/')
     ? path.join(releasePrefix.trim(), '/')
     : releasePrefix.trim()

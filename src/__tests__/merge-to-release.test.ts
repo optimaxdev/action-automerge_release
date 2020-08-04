@@ -10,7 +10,7 @@ import {mergeBranchTo} from '../lib/repo-api';
 import {createpushDescriptionIfNotAlreadyExists} from '../utils/repo';
 import { GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION } from './__mocks__/github-entities.mock';
 import { IContextEnv } from '../types/context';
-import { getTargetBranchesNames } from '../merge-to-release';
+import { getTargetBranchesNames, getBranchNameWithoutRefsPrefix } from '../merge-to-release';
 
 jest.mock('../lib/repo-api');
 jest.mock('../utils/repo');
@@ -22,6 +22,66 @@ const CONTEXT_ENV_MOCK = {
 } as unknown as IContextEnv;
 
 describe('merge-to-release module', () => {
+  describe('getBranchNameWithoutRefsPrefix', () => {
+    it('should return the same branch name if the "refs/heads" string is not in the branch name', () => {
+      const expected = 'branch_name_expected';
+      expect(getBranchNameWithoutRefsPrefix(expected)).toBe(expected);
+    })
+    it('should return an empty string if empty string is passes as argument', () => {
+      const expected = '';
+      expect(getBranchNameWithoutRefsPrefix(expected)).toBe(expected);
+    })
+    it('should remove the "refs/heads/" prefix', () => {
+      const prefix = "refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "    refs/heads/" prefix', () => {
+      const prefix = "    refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "/refs/heads/" prefix', () => {
+      const prefix = " /refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "       /refs/heads/" prefix', () => {
+      const prefix = "       /refs/heads/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should remove the "       /Refs/HEADs/" prefix', () => {
+      const prefix = "       /Refs/HEADs/";
+      const expected = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${expected}`)).toBe(expected);
+    })
+    it('should not remove the "refs/heads" prefix, cause there is no slash at the end', () => {
+      const prefix = "refs/heads";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "refs_/heads" prefix, cause there is an additional symbol in refs prefix', () => {
+      const prefix = "refs_/heads";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "_refs/heads" prefix, cause there is an additional symbol in refs prefix', () => {
+      const prefix = "_refs/heads";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "refs/heads_" prefix, cause there is an additional symbol in heads prefix', () => {
+      const prefix = "refs/heads_";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${prefix}${branchName}`)).toBe(`${prefix}${branchName}`);
+    })
+    it('should not remove the "refs/heads" if it is not at the start of a ref string', () => {
+      const postfix = "refs/heads/";
+      const branchName = 'branch_name';
+      expect(getBranchNameWithoutRefsPrefix(`${branchName}${postfix}`)).toBe(`${branchName}${postfix}`);
+    })
+  });
   describe('getBranchNameWithoutPrefix', () => {
     it('should return "RLS-11" for branchName = "release/RLS-11" and releasePrefix="release"', () => {
       const testBranchName = 'release/RLS-11'
@@ -83,6 +143,22 @@ describe('merge-to-release module', () => {
       const testBranchName = 'R/'
       const testReleasePrefix = 'R/'
       const expected = ''
+      expect(
+        getBranchNameWithoutPrefix(testBranchName, testReleasePrefix)
+      ).toBe(expected)
+    })
+    it('should return "RLS-11" for branchName = "refs/heads/release/RLS-11" and releasePrefix="release"', () => {
+      const testBranchName = 'refs/heads/release/RLS-11'
+      const testReleasePrefix = 'release'
+      const expected = 'RLS-11'
+      expect(
+        getBranchNameWithoutPrefix(testBranchName, testReleasePrefix)
+      ).toBe(expected)
+    })
+    it('should return "RLS-11" for branchName = "    /Refs/Heads/release/RLS-11" and releasePrefix="release"', () => {
+      const testBranchName = '    /Refs/Heads/release/RLS-11'
+      const testReleasePrefix = 'release'
+      const expected = 'RLS-11'
       expect(
         getBranchNameWithoutPrefix(testBranchName, testReleasePrefix)
       ).toBe(expected)

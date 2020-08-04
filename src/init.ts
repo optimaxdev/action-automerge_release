@@ -47,7 +47,7 @@ export function getPushDescription(
   }
 
   //https://developer.github.com/webhooks/event-payloads/#push
-  const repoName = context.payload.repository?.full_name
+  const repoName = context.payload.repository?.name
 
   if (!repoName) {
     throw new Error('Failed to get repository name')
@@ -57,7 +57,7 @@ export function getPushDescription(
   // then base.ref === head.ref and equals to
   // the branch were commit
   const pushedToBranchRef = context.payload.ref
-
+  debug('getPushDescription::context', context)
   return {
     base: {
       ref: pushedToBranchRef,
@@ -98,7 +98,7 @@ export function init(): IInitReturnValue | undefined {
   }
 
   const pushDescription = getPushDescription(context)
-  debugger
+  debug('init::pushDescription', pushDescription)
   // Get event description related to this action
   if (!pushDescription) {
     throw new Error('Failed to get event description')
@@ -121,6 +121,7 @@ export function init(): IInitReturnValue | undefined {
     debug('Skip actions cause the branch is not necessary to be handled')
     return
   }
+  debug(`Branch serial number is ${currentBranchSerialNumber}`)
   const {token: gitHubToken} = contextEnv
   let octokit: ReturnType<typeof gitHub.getOctokit>
 

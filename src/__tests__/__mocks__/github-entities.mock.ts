@@ -13,7 +13,7 @@ export const GITHUB_PUSH_DESCRIPTION_MOCK = {
   base: {
     ref: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME,
     repo: {
-      name: 'owner/repository_name',
+      name: 'repository_name',
       owner: {
         login: 'owner_login',
       }
@@ -39,7 +39,7 @@ export const GITHUB_CONTEXT_MOCK = {
   payload: {
     ref: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME,
     repository: {
-      full_name: 'owner/repository_name',
+      name: 'repository_name',
       owner: {
         login: 'owner_login',
       }

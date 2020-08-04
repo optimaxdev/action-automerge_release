@@ -1,5 +1,16 @@
 ![build-test](https://github.com/optimaxdev/action-automerge_release/workflows/build-test/badge.svg)
 
+# ISSUES
+
+**Merge to the next release branch not trigger subsequent action**
+
+According to ``https://github.community/t/push-from-action-does-not-trigger-subsequent-action/16854``:
+An action pushes code using the repository’s GITHUB_TOKEN, a new workflow will not run even when the repository contains a workflow configured to run when push events occur.
+Please create a personal access token in repo setting(write permission accordingly), replace GITHUB_TOKEN.
+Token should have admin access rights and write permission on the repository.
+
+
+
 # Auto Merging changes to following up release branches and "default" branch
 
 
@@ -22,28 +33,18 @@ This action has a special version which handles merging of pull requests. It's p
 To use the automerge action you need to create a file ``root/.git/workflows/any_workflow_name.yml`` with content like this:
 ```yaml
 name: 'Automerge'
-on:
-pull_request:
- # only if PR closed
- types: [closed]
+on: push
 
 jobs:
-merge: # make sure the action works on a clean machine without building
-runs-on: ubuntu-latest
-steps:
-# run the action
- - uses: optimaxdev/action-automerge_release@master
- name: run_automerge
- id: run_automerge
- # PR must be successfully merged and repo succesfully initiated on the previous step
- if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
- with:
-  token: ${{ github.token }}
-  mainBranchName: 'master'
-  releaseBranchPrfix: 'rel'
-  releaseBranchTaskPrefix: 'v.'
-  automergePrLabel: 'automerge-conflict'
-
+  merge_to_releases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: optimaxdev/action-automerge_release@master
+        with:
+          token: ${{ secrets.TOKEN }}
+          mainBranchName: 'master'
+          releaseBranchPrfix: 'rel'
+          releaseBranchTaskPrefix: 'v.'
 ```
 
 where:

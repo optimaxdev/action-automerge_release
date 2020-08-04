@@ -35,12 +35,9 @@ export async function run(): Promise<void> {
       contextEnv,
       branchesList
     )
-    debugger
     debug('Related branches', relatedBrancheslist)
     const targetBranches = getTargetBranchesNames(relatedBrancheslist)
-    debugger
     if (!targetBranches.length) {
-      debugger
       // should merge to the main branch if there is no related branches exists
       debug('Merge to the main branch', contextEnv.mainBranchName)
       await mergeSourceToBranch(

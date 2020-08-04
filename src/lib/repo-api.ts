@@ -7,6 +7,7 @@ import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepo
 
 /**
  * List branches via the GitHub API
+ * https://developer.github.com/v3/git/refs/#list-matching-references
  *
  * @export
  * @param {TGitHubOctokit} octokit

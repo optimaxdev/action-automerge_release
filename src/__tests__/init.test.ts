@@ -54,7 +54,7 @@ describe('init module', () => {
       payload: {
         ref: 'context.ref',
         repository: {
-          full_name: 'context.payload.repository.full_name',
+          name: 'context.payload.repository.name',
           owner: {
             login: 'context.payload.repository.owner.login',
           }
@@ -84,7 +84,7 @@ describe('init module', () => {
         base: {
           ref: contextPushEventMock.payload.ref,
           repo: {
-            name: contextPushEventMock.payload.repository.full_name,
+            name: contextPushEventMock.payload.repository.name,
             owner: {
               login: contextPushEventMock.payload.repository!.owner.login,
             },

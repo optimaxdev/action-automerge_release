@@ -36,7 +36,7 @@ describe('lib github-common', () => {
 
   describe('getPRRepo', () => {
     it('Should return repository name', () => {
-      expect(getPRRepo(GITHUB_PUSH_DESCRIPTION_MOCK as any)).toEqual('owner/repository_name');
+      expect(getPRRepo(GITHUB_PUSH_DESCRIPTION_MOCK as any)).toEqual('repository_name');
     })
   });
 
