@@ -1,6 +1,6 @@
 import {TGitHubOctokit, IGitHubPushDescription} from '../types/github'
 import {addLabelForPr, checkActivePRExists, createNewPR} from '../lib/repo-api'
-import { debug, error } from '../lib/log';
+import {debug, error} from '../lib/log';
 
 /**
  * Create a pull request from sourceBranchName

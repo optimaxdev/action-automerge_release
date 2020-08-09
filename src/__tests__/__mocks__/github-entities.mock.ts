@@ -21,6 +21,7 @@ export const GITHUB_PUSH_DESCRIPTION_MOCK = {
   },
   head: {
     ref: GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME,
+    sha: 'source_branch_head_commit_sha'
   },
 }
 
@@ -44,7 +45,8 @@ export const GITHUB_CONTEXT_MOCK = {
         login: 'owner_login',
       }
     }
-  }
+  },
+  sha: 'source_branch_head_commit_sha'
 } as any;
 
 export const BRANCHES_REFS_LIST_MOCK = ({

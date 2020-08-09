@@ -71,6 +71,7 @@ export function getPushDescription(
     },
     head: {
       ref: pushedToBranchRef,
+      sha: context.sha,
     },
   }
 }

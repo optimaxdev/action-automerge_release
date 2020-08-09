@@ -3,7 +3,7 @@ import { IContextEnv } from "../types/context";
 import { IGitHubPushDescription, TGitHubOctokit } from '../types/github';
 import { TGitHubApiRestRefResponseData } from '../types/github-api';
 import { debug } from './log';
-import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner } from './github-common';
+import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner, getBranchRef, getBranchNameByRefString } from './github-common';
 
 /**
  * List branches via the GitHub API
@@ -248,9 +248,35 @@ export async function addLabelForPr(
   throw new Error(`addLabelForPr::Unknown status code ${response.status}`);
 }
 
-// octokit.issues.addLabels({
-//   owner,
-//   repo,
-//   issue_number,
-//   labels,
-// });
+/**
+ * Create a new branch from branch wich
+ * has the latest commit sha
+ * https://developer.github.com/v3/git/refs/#create-a-reference
+ * 
+ * 
+ * @export
+ * @param {string} branchName - new branche's name
+ * @param {string} fromBranchCommitSha - sha of the latest commit
+ * @returns {Promise<string>} - returns a new branche's name
+ * @throws - throw on a request failed or if reponses code is not equal to the 201 (CREATED)
+ */
+export async function createBranch(
+  octokit: TGitHubOctokit,
+  pushDescription: IGitHubPushDescription,
+  branchName: string,
+  fromBranchCommitSha: string,
+): Promise<string> {
+  const requestConf = {
+    owner: getPRRepoOwner(pushDescription),
+    repo: getPRRepo(pushDescription),
+    ref: getBranchRef(branchName),
+    sha: fromBranchCommitSha,
+  };
+  debug('createBranch::start::conf:', requestConf);
+  const response = await octokit.git.createRef(requestConf);
+  debug('createBranch::end::response:', response);
+  if (response.status !== 201) {
+    throw new Error('Unknown status code returned from the server');
+  }
+  return getBranchNameByRefString(response.data.ref);
+}

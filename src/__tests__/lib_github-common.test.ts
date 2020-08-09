@@ -1,5 +1,5 @@
 import { GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME } from './__mocks__/github-entities.mock';
-import { getPRRepo, getPRRepoOwner, getPRBranchName } from '../lib/github-common';
+import { getPRRepo, getPRRepoOwner, getPRBranchName, getBranchRef, getBranchNameByRefString } from '../lib/github-common';
 import {
   getBranchRefPrefix,
   getPRTargetBranchName,
@@ -65,6 +65,32 @@ describe('lib github-common', () => {
       expect(
         getBranchNameByRefDescription(GITHUB_BRANCH_REF_DESCRIPTION_MOCK)
       ).toBe(GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME)
+    })
+  })
+
+  describe('getBranchNameByRefString', () => {
+    it(`Should return "branch_prefix/branch_name" for "refs/heads/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}"`, () => {
+      expect(
+        getBranchNameByRefString(`refs/heads/${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}`)
+      ).toBe(GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME)
+    })
+  })
+
+  describe('getBranchRef', () => {
+    it('Should return branch name joined with the refs prefix', () => {
+      const branchName = 'test/branch';
+      const expectedRefName = `refs/heads/${branchName}`;
+      expect(getBranchRef(branchName)).toBe(expectedRefName);
+    })
+    it('Should return branch name joined with the refs prefix ended with the "/", without the slash at the end', () => {
+      const branchName = 'test/branch';
+      const expectedRefName = `refs/heads/${branchName}`;
+      expect(getBranchRef(`${branchName}/`)).toBe(expectedRefName);
+    })
+    it('Should return branch name joined with the refs prefix without doubling of slashes', () => {
+      const branchName = '//test//branch//';
+      const expectedRefName = `refs/heads/test/branch`;
+      expect(getBranchRef(`${branchName}/`)).toBe(expectedRefName);
     })
   })
 })

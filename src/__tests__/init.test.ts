@@ -51,15 +51,16 @@ describe('init module', () => {
 
   describe('getPushDescription', () => {
     const contextPushEventMock = {
+      sha: 'context.sha',
       payload: {
-        ref: 'context.ref',
+        ref: 'context.payload.ref',
         repository: {
           name: 'context.payload.repository.name',
           owner: {
             login: 'context.payload.repository.owner.login',
           }
         }
-      }
+      },
     } as any;
     it('Should reutrn instance of pull request if the wokflow triggered by a pull request merged', () => {
       const pullRequestSourceBranchRef = 'source_ref'
@@ -67,7 +68,8 @@ describe('init module', () => {
         ...GITHUB_PUSH_DESCRIPTION_MOCK,
         head: {
           ...GITHUB_PUSH_DESCRIPTION_MOCK.head,
-          ref: pullRequestSourceBranchRef
+          ref: pullRequestSourceBranchRef,
+          sha: 'pull_request.head.sha',
         }
       };
       const contextpushDescriptionEventMock = {
@@ -92,6 +94,7 @@ describe('init module', () => {
         },
         head: {
           ref: contextPushEventMock.payload.ref,
+          sha: 'context.sha'
         },
       });
     })
