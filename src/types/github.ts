@@ -50,6 +50,12 @@ export interface IGitHubPushDescription {
      * @type {string}
      */
     ref: string
+    /**
+     * sha of the source branch latest commit
+     *
+     * @type {string}
+     */
+    sha: string
   }
 }
 

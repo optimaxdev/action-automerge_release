@@ -4,7 +4,8 @@ import {
   fetchBranchesList,
   fetchReleaseBranchesNamesByAPI,
   mergeBranchTo,
-  addLabelForPr
+  addLabelForPr, 
+  createBranch,
 } from '../lib/repo-api'
 import {
   GITHUB_PUSH_DESCRIPTION_MOCK,
@@ -15,7 +16,8 @@ jest.mock('../lib/github-common', () => ({
   getBranchNameByRefDescription: jest.fn(() => 'getBranchNameByRefDescription'),
   getBranchRefPrefix: jest.fn(() => 'getBranchRefPrefix'),
   getPRRepo: jest.fn(() => 'getPRRepo'),
-  getPRRepoOwner: jest.fn(() => 'getPRRepoOwner')
+  getPRRepoOwner: jest.fn(() => 'getPRRepoOwner'),
+  getBranchRef: jest.fn(() => 'getBranchRef')
 }))
 
 describe('lib repo-api', () => {
@@ -26,7 +28,8 @@ describe('lib repo-api', () => {
   beforeEach(() => {
     octokit = {
       git: {
-        listMatchingRefs: jest.fn(() => ({...BRANCHES_REFS_LIST_MOCK}))
+        listMatchingRefs: jest.fn(() => ({...BRANCHES_REFS_LIST_MOCK})),
+        createRef: jest.fn(() => ({ status: 201 })), 
       },
       repos: {
         merge: jest.fn(() => ({ status: 201 }))
@@ -331,6 +334,56 @@ describe('lib repo-api', () => {
         'label'
       )).rejects.toThrow();
       expect(octokitIssues.issues.addLabels).toBeCalledTimes(1);
+    })
+  })
+
+  describe('createBranch', () => {
+    let BRANCHES_REFS_CREATED_MOCK = ({
+      data: {
+        ref: "refs/heads/feature/featureA",
+        node_id: "MDM6UmVmcmVmcy9oZWFkcy9mZWF0dXJlQQ==",
+        url: "https://api.github.com/repos/octocat/Hello-World/git/refs/heads/feature/featureA",
+        object: {
+          type: "commit",
+          sha: "aa218f56b14c9653891f9e74264a383fa43fefbd",
+          url: "https://api.github.com/repos/octocat/Hello-World/git/commits/aa218f56b14c9653891f9e74264a383fa43fefbd"
+        }
+      },
+      code: 201
+    })
+
+    it('Should returns a branch name', () => {
+      expect(createBranch(
+        {
+          ...octokit,
+          git: {
+            ...octokit.git,
+            createRef: jest.fn(() => ({
+              ...BRANCHES_REFS_CREATED_MOCK,
+            }))
+          }
+        },
+        pushDescription,
+        'newBranchName',
+        'commitSha',
+      )).resolves.toBe('feature/featureA')
+    })
+    it('Should throw if a response code is not equals to the 201', () => {
+      expect(createBranch(
+        {
+          ...octokit,
+          git: {
+            ...octokit.git,
+            createRef: jest.fn(() => ({
+              ...BRANCHES_REFS_CREATED_MOCK,
+              code: 200
+            }))
+          }
+        },
+        pushDescription,
+        'newBranchName',
+        'commitSha',
+      )).rejects.toThrowError('Unknown status code returned from the server')
     })
   })
 })

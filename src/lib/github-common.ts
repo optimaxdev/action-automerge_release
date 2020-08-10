@@ -1,4 +1,5 @@
 import path from 'path';
+import * as core from '@actions/core'
 import { IGitHubPushDescription } from '../types/github';
 import { TArrayElement } from '../types/helpers';
 import { TGitHubApiRestRefResponseData } from '../types/github-api';
@@ -55,14 +56,37 @@ export function getPRTargetBranchName(
 }
 
 /**
+ * Retuns SHA of the of the source branche's name
+ *
+ * @export
+ * @param {IGitHubPushDescription} pushDescription
+ */
+export function getPRSourceBranchSHA(
+    pushDescription: IGitHubPushDescription
+) {
+    return pushDescription.head.sha;
+}
+
+/**
+ * Return branch name by a branch ref string
+ *
+ * @param {TArrayElement<TGitHubApiRestRefResponseData>} refString - string which represented a ref of the branch
+ * @returns {string}
+ */
+export function getBranchNameByRefString(refString: string): string {
+    return refString.trim().slice(GIT_REF_HEADS_PREFIX.length).trim();
+}
+
+/**
  * Return branch name by a branch description
  *
  * @param {TArrayElement<TGitHubApiRestRefResponseData>} refDescription
  * @returns {string}
  */
 export function getBranchNameByRefDescription(refDescription: TArrayElement<TGitHubApiRestRefResponseData>): string {
-    return refDescription.ref.trim().slice(GIT_REF_HEADS_PREFIX.length).trim();
+    return getBranchNameByRefString(refDescription.ref);
 }
+
   /**
    * Return full reference to a branch's prefix
    *
@@ -72,4 +96,32 @@ export function getBranchNameByRefDescription(refDescription: TArrayElement<TGit
    */
   export function getBranchRefPrefix(branchPrefix: string): string {
     return path.join(GIT_HEADS_PREFIX, branchPrefix.trim(), '/');
-  } 
+  }
+
+  /**
+   * get a reference for the branch by it's name
+   *
+   * @export
+   * @param {string} branchName
+   */
+  export function getBranchRef(
+    branchName: string,
+  ) {
+    const resultedBranchName = path.join(GIT_REF_HEADS_PREFIX, branchName.trim(), '/');
+    return resultedBranchName.substring(0, resultedBranchName.length - 1);
+  }
+
+  /**
+     * Returns name of a branch when automerge failed
+     *
+     * @export
+     * @param {string} sourceBranchName
+     * @param {string} targetBranchName
+     * @returns {string}
+ */
+export function getBranchNameForTargetBranchAutomergeFailed(
+    targetBranchName: string,
+    sourceBranchName: string
+  ): string {
+    return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`
+  }
