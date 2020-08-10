@@ -1,7 +1,8 @@
 import * as core from '@actions/core'
 import {init} from './init'
-import {fetchReleaseBranchesNamesByAPI} from './lib/repo-api'
+import {fetchBranchesListGraphQL} from './lib/repo-api'
 import {debug, error} from './lib/log'
+import {getBranchRef} from './lib/github-common'
 import {
   getBranchesRelatedToPD,
   mergeSourceToBranch,
@@ -20,10 +21,11 @@ export async function run(): Promise<void> {
     }
 
     const {pushDescription, octokit, contextEnv} = initResult
-    const branchesList = await fetchReleaseBranchesNamesByAPI(
+    const branchesList = await fetchBranchesListGraphQL(
       octokit,
-      pushDescription,
-      contextEnv
+      `${getBranchRef(contextEnv.releaseBranchPrfix)}/`,
+      contextEnv.releaseBranchTaskPrefix,
+      100
     )
     debug('Fetched branches', branchesList)
     if (!branchesList.length) {

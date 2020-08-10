@@ -3823,7 +3823,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createBranch = exports.addLabelForPr = exports.createNewPR = exports.checkActivePRExists = exports.mergeBranchTo = exports.fetchReleaseBranchesNamesByAPI = exports.fetchBranchesList = void 0;
+exports.createBranch = exports.addLabelForPr = exports.createNewPR = exports.checkActivePRExists = exports.mergeBranchTo = exports.fetchReleaseBranchesNamesByAPI = exports.fetchBranchesListGraphQL = exports.fetchBranchesList = void 0;
 const util_1 = __webpack_require__(669);
 const log_1 = __webpack_require__(936);
 const github_common_1 = __webpack_require__(312);
@@ -3856,6 +3856,39 @@ function fetchBranchesList(octokit, pushDescription, branchPrefix, page = 1, per
     });
 }
 exports.fetchBranchesList = fetchBranchesList;
+/**
+ * List branches via the GitHub GraphQL API
+ * https://developer.github.com/v3/git/refs/#list-matching-references
+ *
+ * @export
+ * @param {TGitHubOctokit} octokit
+ * @param {IGitHubPushDescription} pushDescription
+ * @param {number} [perPage=100] - how many items to fetch on one page
+ * @param {number} [page=1] - requested page number
+ * @param {string} [owner]
+ * @throws {Error}
+ * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
+ */
+function fetchBranchesListGraphQL(octokit, releaseBranchPrfix, releaseBranchTaskPrefix, first = 1) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const queryText = `{
+    repository(name: "GlassesUSA-Desktop", owner: "optimaxdev") {
+      refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
+        edges {
+          node {
+            name
+          }
+        }
+      }
+    }
+  }`;
+        log_1.debug('listBranches::start::query', queryText);
+        const res = yield octokit.graphql(queryText);
+        log_1.debug('listBranches::::end', res.data.repository.edges);
+        return res.data.repository.edges.map(({ node }) => node.name);
+    });
+}
+exports.fetchBranchesListGraphQL = fetchBranchesListGraphQL;
 /**
  * Fetch all Release branches to this PR's
  * target branch.
@@ -4928,6 +4961,7 @@ const core = __importStar(__webpack_require__(470));
 const init_1 = __webpack_require__(207);
 const repo_api_1 = __webpack_require__(511);
 const log_1 = __webpack_require__(936);
+const github_common_1 = __webpack_require__(312);
 const merge_to_release_1 = __webpack_require__(906);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -4938,7 +4972,7 @@ function run() {
                 return;
             }
             const { pushDescription, octokit, contextEnv } = initResult;
-            const branchesList = yield repo_api_1.fetchReleaseBranchesNamesByAPI(octokit, pushDescription, contextEnv);
+            const branchesList = yield repo_api_1.fetchBranchesListGraphQL(octokit, `${github_common_1.getBranchRef(contextEnv.releaseBranchPrfix)}/`, contextEnv.releaseBranchTaskPrefix, 100);
             log_1.debug('Fetched branches', branchesList);
             if (!branchesList.length) {
                 throw new Error('No branches were found');

@@ -39,6 +39,42 @@ export async function fetchBranchesList(
 }
 
 /**
+ * List branches via the GitHub GraphQL API
+ * https://developer.github.com/v3/git/refs/#list-matching-references
+ *
+ * @export
+ * @param {TGitHubOctokit} octokit
+ * @param {IGitHubPushDescription} pushDescription
+ * @param {number} [perPage=100] - how many items to fetch on one page
+ * @param {number} [page=1] - requested page number
+ * @param {string} [owner]
+ * @throws {Error}
+ * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
+ */
+export async function fetchBranchesListGraphQL(
+  octokit: TGitHubOctokit,
+  releaseBranchPrfix: string,
+  releaseBranchTaskPrefix: string,
+  first: number = 1,
+): Promise<string[]> {
+  const queryText = `{
+    repository(name: "GlassesUSA-Desktop", owner: "optimaxdev") {
+      refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
+        edges {
+          node {
+            name
+          }
+        }
+      }
+    }
+  }`;
+  debug('listBranches::start::query', queryText);
+  const res = await octokit.graphql(queryText);
+  debug('listBranches::::end', (res as any).data.repository.edges);
+  return (res as any).data.repository.edges.map(({ node }: { node: { name: string } }) => node.name);
+}
+
+/**
  * Fetch all Release branches to this PR's 
  * target branch.
  *
