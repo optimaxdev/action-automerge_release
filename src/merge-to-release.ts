@@ -4,7 +4,7 @@ import {IContextEnv} from './types/context'
 import {debug} from './lib/log'
 import {getPRTargetBranchName, getPRBranchName} from './lib/github-common'
 import {mergeBranchTo} from './lib/repo-api'
-import {createpushDescriptionIfNotAlreadyExists} from './utils/repo'
+import {createPullRequest} from './utils/repo'
 import {GIT_REF_HEADS_PREFIX} from './const/github'
 
 /**
@@ -157,7 +157,7 @@ export async function mergeSourceToBranch(
     debug(
       `The result of merging branch ${sourceBranchName} to the branch ${targetBranchName} is merge conflict`
     )
-    await createpushDescriptionIfNotAlreadyExists(
+    await createPullRequest(
       octokit,
       pushDescription,
       targetBranchName,

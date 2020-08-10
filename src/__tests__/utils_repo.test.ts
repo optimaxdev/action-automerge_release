@@ -1,4 +1,4 @@
-import { createpushDescriptionIfNotAlreadyExists, getBranchNameForTargetBranchAutomergeFailed } from '../utils/repo';
+import { createPullRequest, getBranchNameForTargetBranchAutomergeFailed } from '../utils/repo';
 import { GITHUB_PUSH_DESCRIPTION_MOCK, BRANCHES_REFS_LIST_MOCK } from './__mocks__/github-entities.mock';
 import { TGitHubOctokit, IGitHubPushDescription } from '../types/github';
 
@@ -41,7 +41,7 @@ describe('utils repo', () => {
       })
     })
 
-  describe('createpushDescriptionIfNotAlreadyExists', () => {
+  describe('createPullRequest', () => {
     it('Should throw if createBranch throws', async () => {
       const {createBranch} = require('../lib/repo-api')
       createBranch.mockClear();
@@ -49,7 +49,7 @@ describe('utils repo', () => {
         throw new Error('Failed')
       })
       expect(createBranch).toBeCalledTimes(0)
-      await expect(createpushDescriptionIfNotAlreadyExists(
+      await expect(createPullRequest(
         octokit,
         pushDescription,
         'target_branch',
@@ -66,7 +66,7 @@ describe('utils repo', () => {
         return expectedBranchName;
       })
       try {
-        await createpushDescriptionIfNotAlreadyExists(
+        await createPullRequest(
           octokit,
           pushDescription,
           'target_branch',
@@ -88,7 +88,7 @@ describe('utils repo', () => {
       createBranch.mockImplementation(() => {
         return expectedBranchName;
       })
-      await expect(createpushDescriptionIfNotAlreadyExists(
+      await expect(createPullRequest(
         octokit,
         pushDescription,
         'target_branch',
@@ -119,7 +119,7 @@ describe('utils repo', () => {
         expectedBranchName,
       )).toThrow();
       expect(createNewPR).toBeCalledTimes(1)
-      await expect(createpushDescriptionIfNotAlreadyExists(
+      await expect(createPullRequest(
         octokit,
         pushDescription,
         'target_branch',
@@ -142,7 +142,7 @@ describe('utils repo', () => {
         return expectedBranchName;
       })
       createNewPR.mockReturnValue("1")
-      await expect(createpushDescriptionIfNotAlreadyExists(
+      await expect(createPullRequest(
         octokit,
         pushDescription,
         'target_branch',
@@ -159,7 +159,7 @@ describe('utils repo', () => {
         return expectedBranchName;
       })
       createNewPR.mockReturnValue(1)
-      await expect(createpushDescriptionIfNotAlreadyExists(
+      await expect(createPullRequest(
         octokit,
         pushDescription,
         'target_branch',
@@ -183,7 +183,7 @@ describe('utils repo', () => {
       const prNumberExpected = 1;
       const prLabelExpected = 'automergePrLabel';
       createNewPR.mockReturnValue(prNumberExpected)
-      await expect(createpushDescriptionIfNotAlreadyExists(
+      await expect(createPullRequest(
         octokit,
         pushDescription,
         'target_branch',
@@ -212,7 +212,7 @@ describe('utils repo', () => {
         'automergePrLabel'
       )).toThrow()
       expect(addLabelForPr).toBeCalledTimes(1)
-      await expect(createpushDescriptionIfNotAlreadyExists(
+      await expect(createPullRequest(
         octokit,
         pushDescription,
         'target_branch',

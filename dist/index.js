@@ -570,7 +570,7 @@ function getPushDescription(context) {
     // then base.ref === head.ref and equals to
     // the branch were commit
     const pushedToBranchRef = context.payload.ref;
-    log_1.debug('getPushDescription::context', context);
+    log_1.debug('getPushDescription::context.payload', context.payload);
     return {
         base: {
             ref: pushedToBranchRef,
@@ -584,6 +584,7 @@ function getPushDescription(context) {
         },
         head: {
             ref: pushedToBranchRef,
+            sha: context.sha,
         },
     };
 }
@@ -899,7 +900,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBranchRefPrefix = exports.getBranchNameByRefDescription = exports.getPRTargetBranchName = exports.getPRRepoOwner = exports.getPRRepo = exports.getPRBranchName = void 0;
+exports.getBranchNameForTargetBranchAutomergeFailed = exports.getBranchRef = exports.getBranchRefPrefix = exports.getBranchNameByRefDescription = exports.getBranchNameByRefString = exports.getPRSourceBranchSHA = exports.getPRTargetBranchName = exports.getPRRepoOwner = exports.getPRRepo = exports.getPRBranchName = void 0;
 const path_1 = __importDefault(__webpack_require__(622));
 const github_1 = __webpack_require__(272);
 /**
@@ -945,13 +946,33 @@ function getPRTargetBranchName(pushDescription) {
 }
 exports.getPRTargetBranchName = getPRTargetBranchName;
 /**
+ * Retuns SHA of the of the source branche's name
+ *
+ * @export
+ * @param {IGitHubPushDescription} pushDescription
+ */
+function getPRSourceBranchSHA(pushDescription) {
+    return pushDescription.head.sha;
+}
+exports.getPRSourceBranchSHA = getPRSourceBranchSHA;
+/**
+ * Return branch name by a branch ref string
+ *
+ * @param {TArrayElement<TGitHubApiRestRefResponseData>} refString - string which represented a ref of the branch
+ * @returns {string}
+ */
+function getBranchNameByRefString(refString) {
+    return refString.trim().slice(github_1.GIT_REF_HEADS_PREFIX.length).trim();
+}
+exports.getBranchNameByRefString = getBranchNameByRefString;
+/**
  * Return branch name by a branch description
  *
  * @param {TArrayElement<TGitHubApiRestRefResponseData>} refDescription
  * @returns {string}
  */
 function getBranchNameByRefDescription(refDescription) {
-    return refDescription.ref.trim().slice(github_1.GIT_REF_HEADS_PREFIX.length).trim();
+    return getBranchNameByRefString(refDescription.ref);
 }
 exports.getBranchNameByRefDescription = getBranchNameByRefDescription;
 /**
@@ -965,6 +986,29 @@ function getBranchRefPrefix(branchPrefix) {
     return path_1.default.join(github_1.GIT_HEADS_PREFIX, branchPrefix.trim(), '/');
 }
 exports.getBranchRefPrefix = getBranchRefPrefix;
+/**
+ * get a reference for the branch by it's name
+ *
+ * @export
+ * @param {string} branchName
+ */
+function getBranchRef(branchName) {
+    const resultedBranchName = path_1.default.join(github_1.GIT_REF_HEADS_PREFIX, branchName.trim(), '/');
+    return resultedBranchName.substring(0, resultedBranchName.length - 1);
+}
+exports.getBranchRef = getBranchRef;
+/**
+   * Returns name of a branch when automerge failed
+   *
+   * @export
+   * @param {string} sourceBranchName
+   * @param {string} targetBranchName
+   * @returns {string}
+*/
+function getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName) {
+    return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`;
+}
+exports.getBranchNameForTargetBranchAutomergeFailed = getBranchNameForTargetBranchAutomergeFailed;
 
 
 /***/ }),
@@ -984,9 +1028,22 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createpushDescriptionIfNotAlreadyExists = void 0;
+exports.createPullRequest = exports.getBranchNameForTargetBranchAutomergeFailed = void 0;
 const repo_api_1 = __webpack_require__(511);
 const log_1 = __webpack_require__(936);
+const github_common_1 = __webpack_require__(312);
+/**
+ * Returns name of a branch when automerge failed
+ *
+ * @export
+ * @param {string} sourceBranchName
+ * @param {string} targetBranchName
+ * @returns {string}
+ */
+function getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName) {
+    return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`;
+}
+exports.getBranchNameForTargetBranchAutomergeFailed = getBranchNameForTargetBranchAutomergeFailed;
 /**
  * Create a pull request from sourceBranchName
  * to targetBranchName if not already exists
@@ -1000,34 +1057,32 @@ const log_1 = __webpack_require__(936);
  * @param {string} pushDescriptionLabel - a label for pull request if created automatically
  * @returns {(Promise<void>)} - returns void if a pull request is exists or was successfully created
  */
-function createpushDescriptionIfNotAlreadyExists(octokit, pushDescription, targetBranchName, sourceBranchName, pushDescriptionLabel) {
+function createPullRequest(octokit, pushDescription, targetBranchName, sourceBranchName, pushDescriptionLabel) {
     return __awaiter(this, void 0, void 0, function* () {
-        log_1.debug(`createpushDescriptionIfNotAlreadyExists::start::from ${sourceBranchName} to ${targetBranchName} branch`);
-        const isExists = yield repo_api_1.checkActivePRExists(octokit, pushDescription, targetBranchName, sourceBranchName);
-        if (isExists) {
-            log_1.debug(`createpushDescriptionIfNotAlreadyExists::do nothing cause pull request from ${sourceBranchName} to ${targetBranchName} branch is exists`);
-            // do nothing if a PR is already exists for this branches pair
-            return;
-        }
-        log_1.debug(`createpushDescriptionIfNotAlreadyExists::Create new pull request from ${sourceBranchName} to ${targetBranchName} branch`);
-        const pushDescriptionNumber = yield repo_api_1.createNewPR(octokit, pushDescription, targetBranchName, sourceBranchName);
+        log_1.debug(`createPullRequest::start::from ${sourceBranchName} to ${targetBranchName} branch`);
+        const automergeCustomBranchName = getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName);
+        log_1.debug(`createPullRequest::Create new branch ${automergeCustomBranchName}`);
+        const automergeBranchName = yield repo_api_1.createBranch(octokit, pushDescription, automergeCustomBranchName, github_common_1.getPRSourceBranchSHA(pushDescription));
+        log_1.debug(`createPullRequest::New branch created ${automergeCustomBranchName};
+    createPullRequest::Create new pull request from ${automergeBranchName} to ${targetBranchName} branch;`);
+        const pushDescriptionNumber = yield repo_api_1.createNewPR(octokit, pushDescription, targetBranchName, automergeBranchName);
         if (typeof pushDescriptionNumber !== 'number') {
             throw new Error('Pull request was created with unknown number');
         }
-        log_1.debug(`createpushDescriptionIfNotAlreadyExists::Pull request from ${sourceBranchName} to ${targetBranchName} branch was created with number ${pushDescriptionNumber}`);
+        log_1.debug(`createPullRequest::Pull request from ${automergeBranchName} to ${targetBranchName} branch was created with number ${pushDescriptionNumber}`);
         if (pushDescriptionLabel && pushDescriptionLabel.trim()) {
-            log_1.debug(`createpushDescriptionIfNotAlreadyExists::Pull request from ${sourceBranchName} to ${targetBranchName} add the label ${pushDescriptionLabel} to the Pull Request created`);
+            log_1.debug(`createPullRequest::Pull request from ${automergeBranchName} to ${targetBranchName} add the label ${pushDescriptionLabel} to the Pull Request created`);
             try {
                 yield repo_api_1.addLabelForPr(octokit, pushDescription, pushDescriptionNumber, pushDescriptionLabel.trim());
             }
             catch (err) {
-                log_1.debug(`createpushDescriptionIfNotAlreadyExists::failed to add label for Pull request from ${sourceBranchName} to ${targetBranchName}`);
+                log_1.debug(`createPullRequest::failed to add label for Pull request from ${automergeBranchName} to ${targetBranchName}`);
                 log_1.error(err);
             }
         }
     });
 }
-exports.createpushDescriptionIfNotAlreadyExists = createpushDescriptionIfNotAlreadyExists;
+exports.createPullRequest = createPullRequest;
 
 
 /***/ }),
@@ -3770,7 +3825,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addLabelForPr = exports.createNewPR = exports.checkActivePRExists = exports.mergeBranchTo = exports.fetchReleaseBranchesNamesByAPI = exports.fetchBranchesList = void 0;
+exports.createBranch = exports.addLabelForPr = exports.createNewPR = exports.checkActivePRExists = exports.mergeBranchTo = exports.fetchReleaseBranchesNamesByAPI = exports.fetchBranchesList = void 0;
 const util_1 = __webpack_require__(669);
 const log_1 = __webpack_require__(936);
 const github_common_1 = __webpack_require__(312);
@@ -3987,12 +4042,36 @@ function addLabelForPr(octokit, pushDescription, prNumber, label) {
     });
 }
 exports.addLabelForPr = addLabelForPr;
-// octokit.issues.addLabels({
-//   owner,
-//   repo,
-//   issue_number,
-//   labels,
-// });
+/**
+ * Create a new branch from branch wich
+ * has the latest commit sha
+ * https://developer.github.com/v3/git/refs/#create-a-reference
+ *
+ *
+ * @export
+ * @param {string} branchName - new branche's name
+ * @param {string} fromBranchCommitSha - sha of the latest commit
+ * @returns {Promise<string>} - returns a new branche's name
+ * @throws - throw on a request failed or if reponses code is not equal to the 201 (CREATED)
+ */
+function createBranch(octokit, pushDescription, branchName, fromBranchCommitSha) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const requestConf = {
+            owner: github_common_1.getPRRepoOwner(pushDescription),
+            repo: github_common_1.getPRRepo(pushDescription),
+            ref: github_common_1.getBranchRef(branchName),
+            sha: fromBranchCommitSha,
+        };
+        log_1.debug('createBranch::start::conf:', requestConf);
+        const response = yield octokit.git.createRef(requestConf);
+        log_1.debug('createBranch::end::response:', response);
+        if (response.status !== 201) {
+            throw new Error('Unknown status code returned from the server');
+        }
+        return github_common_1.getBranchNameByRefString(response.data.ref);
+    });
+}
+exports.createBranch = createBranch;
 
 
 /***/ }),
@@ -4867,12 +4946,9 @@ function run() {
                 throw new Error('No branches were found');
             }
             const relatedBrancheslist = yield merge_to_release_1.getBranchesRelatedToPD(pushDescription, contextEnv, branchesList);
-            debugger;
             log_1.debug('Related branches', relatedBrancheslist);
             const targetBranches = merge_to_release_1.getTargetBranchesNames(relatedBrancheslist);
-            debugger;
             if (!targetBranches.length) {
-                debugger;
                 // should merge to the main branch if there is no related branches exists
                 log_1.debug('Merge to the main branch', contextEnv.mainBranchName);
                 yield merge_to_release_1.mergeSourceToBranch(octokit, pushDescription, contextEnv, contextEnv.mainBranchName);
@@ -6632,7 +6708,7 @@ function mergeSourceToBranch(octokit, pushDescription, contextEnv, targetBranchN
         if (result === false) {
             // if a merge conflict
             log_1.debug(`The result of merging branch ${sourceBranchName} to the branch ${targetBranchName} is merge conflict`);
-            yield repo_1.createpushDescriptionIfNotAlreadyExists(octokit, pushDescription, targetBranchName, sourceBranchName, contextEnv.automergePrLabel);
+            yield repo_1.createPullRequest(octokit, pushDescription, targetBranchName, sourceBranchName, contextEnv.automergePrLabel);
             return false;
         }
         else {

@@ -7,7 +7,7 @@ import {
   getBranchesRelatedToPD,
 } from '../merge-to-release';
 import {mergeBranchTo} from '../lib/repo-api';
-import {createpushDescriptionIfNotAlreadyExists} from '../utils/repo';
+import {createPullRequest} from '../utils/repo';
 import { GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION } from './__mocks__/github-entities.mock';
 import { IContextEnv } from '../types/context';
 import { getTargetBranchesNames, getBranchNameWithoutRefsPrefix } from '../merge-to-release';
@@ -405,8 +405,8 @@ describe('merge-to-release module', () => {
     test('should not create a PR if no merge conflict with a target branch', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue();
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
-      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+      (createPullRequest as any).mockClear();
+      (createPullRequest as any).mockReturnValue();
       const octokit = {} as any;
       await mergeSourceToBranch(
         octokit,
@@ -415,15 +415,15 @@ describe('merge-to-release module', () => {
         'branch_b',
       )
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(0);
+      expect(createPullRequest).toBeCalledTimes(0);
     })
     test('should not create a PR if GitHub API call throws', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockImplementation(() => {
         throw new Error('Error');
       });
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
-      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+      (createPullRequest as any).mockClear();
+      (createPullRequest as any).mockReturnValue();
 
       const octokit = {} as any;
 
@@ -441,26 +441,26 @@ describe('merge-to-release module', () => {
         'branch_b',
       )).rejects.toThrow()
       expect(mergeBranchTo).toBeCalledTimes(2);
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(0);
+      expect(createPullRequest).toBeCalledTimes(0);
     })
     test('should rejects if PR creation throws on merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
-      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
-      (createpushDescriptionIfNotAlreadyExists as any).mockImplementation(() => {
+      (createPullRequest as any).mockClear();
+      (createPullRequest as any).mockReturnValue();
+      (createPullRequest as any).mockImplementation(() => {
         throw new Error('Error');
       });
 
       const octokit = {} as any;
 
-      expect(() => createpushDescriptionIfNotAlreadyExists(
+      expect(() => createPullRequest(
         octokit,
         GITHUB_PUSH_DESCRIPTION_MOCK as any,
         'branch_b',
         GITHUB_PUSH_DESCRIPTION_MOCK.head.ref,
       )).toThrow();
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(1);
+      expect(createPullRequest).toBeCalledTimes(1);
       await expect(mergeSourceToBranch(
         octokit,
         GITHUB_PUSH_DESCRIPTION_MOCK as any,
@@ -468,13 +468,13 @@ describe('merge-to-release module', () => {
         'branch_b',
       )).rejects.toThrow()
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(2);
+      expect(createPullRequest).toBeCalledTimes(2);
     })
     test('should create a PR on a merge conflict with a branch', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
-      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+      (createPullRequest as any).mockClear();
+      (createPullRequest as any).mockReturnValue();
       const octokit = {} as any;
       await mergeSourceToBranch(
         octokit,
@@ -483,7 +483,7 @@ describe('merge-to-release module', () => {
         'branch_b',
       )
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledWith(
+      expect(createPullRequest).toBeCalledWith(
         expect.anything(),
         expect.anything(),
         'branch_b',
@@ -494,8 +494,8 @@ describe('merge-to-release module', () => {
     test('should resolves with false on a merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
-      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+      (createPullRequest as any).mockClear();
+      (createPullRequest as any).mockReturnValue();
       const octokit = {} as any;
       await expect(mergeSourceToBranch(
         octokit,
@@ -504,13 +504,13 @@ describe('merge-to-release module', () => {
         'branch_b',
       )).resolves.toBe(false);
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(1);
+      expect(createPullRequest).toBeCalledTimes(1);
     })
     test('should resolves with undefined if no merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue();
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
-      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+      (createPullRequest as any).mockClear();
+      (createPullRequest as any).mockReturnValue();
       const octokit = {} as any;
       await expect(mergeSourceToBranch(
         octokit,
@@ -519,7 +519,7 @@ describe('merge-to-release module', () => {
         'branch_b',
       )).resolves.toBe(undefined);
       expect(mergeBranchTo).toBeCalledTimes(1);
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledTimes(0);
+      expect(createPullRequest).toBeCalledTimes(0);
     })
   })
 
@@ -669,7 +669,7 @@ describe('merge-to-release module', () => {
   describe('mergeToBranches', () => {
     beforeEach(() => {
       (mergeBranchTo as any).mockReturnValue(undefined);
-      (createpushDescriptionIfNotAlreadyExists as any).mockReturnValue();
+      (createPullRequest as any).mockReturnValue();
     })
     it('should resolves with undefined if no branches to merge', async () => {
       (mergeBranchTo as any).mockClear();
@@ -801,10 +801,10 @@ describe('merge-to-release module', () => {
       expect(mergeBranchTo).toBeCalledTimes(1);
     })
 
-    it('should call once createpushDescriptionIfNotAlreadyExists with target branch which failed cause of conflict while a first merge conflict', async () => {
+    it('should call once createPullRequest with target branch which failed cause of conflict while a first merge conflict', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
+      (createPullRequest as any).mockClear();
       const octokit = {} as any;
       const branchTargetNameFirst = `branch1`;
       const branchTargetNameSecond = `branch2`;
@@ -816,8 +816,8 @@ describe('merge-to-release module', () => {
         CONTEXT_ENV_MOCK,
         [branchTargetNameFirst, branchTargetNameSecond, branchTargetNameThird],
       )
-      expect(createpushDescriptionIfNotAlreadyExists).toHaveBeenCalledTimes(1)
-      expect(createpushDescriptionIfNotAlreadyExists).toBeCalledWith(
+      expect(createPullRequest).toHaveBeenCalledTimes(1)
+      expect(createPullRequest).toBeCalledWith(
         expect.anything(),
         expect.anything(),
         branchTargetNameFirst,
@@ -826,15 +826,15 @@ describe('merge-to-release module', () => {
       );
     })
 
-    it('should rejects if createpushDescriptionIfNotAlreadyExists throws', async () => {
+    it('should rejects if createPullRequest throws', async () => {
       (mergeBranchTo as any).mockClear();
       (mergeBranchTo as any).mockReturnValue(false);
-      (createpushDescriptionIfNotAlreadyExists as any).mockClear();
-      (createpushDescriptionIfNotAlreadyExists as any).mockImplementation(() => {
+      (createPullRequest as any).mockClear();
+      (createPullRequest as any).mockImplementation(() => {
         throw new Error('Failed');
       });
 
-      expect(createpushDescriptionIfNotAlreadyExists).toThrow();
+      expect(createPullRequest).toThrow();
 
       const octokit = {} as any;
       const branchTargetNameFirst = `branch1`;
