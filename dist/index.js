@@ -900,7 +900,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBranchNameForTargetBranchAutomergeFailed = exports.getBranchRef = exports.getBranchRefPrefix = exports.getBranchNameByRefDescription = exports.getBranchNameByRefString = exports.getPRSourceBranchSHA = exports.getPRTargetBranchName = exports.getPRRepoOwner = exports.getPRRepo = exports.getPRBranchName = void 0;
+exports.removeRefPrefixFromBranchName = exports.getBranchRef = exports.getBranchRefPrefix = exports.getBranchNameByRefDescription = exports.getBranchNameByRefString = exports.getPRSourceBranchSHA = exports.getPRTargetBranchName = exports.getPRRepoOwner = exports.getPRRepo = exports.getPRBranchName = void 0;
 const path_1 = __importDefault(__webpack_require__(622));
 const github_1 = __webpack_require__(272);
 /**
@@ -998,17 +998,15 @@ function getBranchRef(branchName) {
 }
 exports.getBranchRef = getBranchRef;
 /**
-   * Returns name of a branch when automerge failed
-   *
-   * @export
-   * @param {string} sourceBranchName
-   * @param {string} targetBranchName
-   * @returns {string}
+* Removes refs prefix from a branch name
+*
+* @param {TArrayElement<TGitHubApiRestRefResponseData>} refString - string which represented a ref of the branch
+* @returns {string}
 */
-function getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName) {
-    return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`;
+function removeRefPrefixFromBranchName(branchNameStrging) {
+    return branchNameStrging.trim().startsWith(github_1.GIT_REF_HEADS_PREFIX) ? getBranchNameByRefString(branchNameStrging) : branchNameStrging.trim();
 }
-exports.getBranchNameForTargetBranchAutomergeFailed = getBranchNameForTargetBranchAutomergeFailed;
+exports.removeRefPrefixFromBranchName = removeRefPrefixFromBranchName;
 
 
 /***/ }),
@@ -1041,7 +1039,7 @@ const github_common_1 = __webpack_require__(312);
  * @returns {string}
  */
 function getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName) {
-    return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`;
+    return `automerge_${github_common_1.removeRefPrefixFromBranchName(sourceBranchName)}_to_${github_common_1.removeRefPrefixFromBranchName(targetBranchName).trim()}_${Date.now()}`;
 }
 exports.getBranchNameForTargetBranchAutomergeFailed = getBranchNameForTargetBranchAutomergeFailed;
 /**
