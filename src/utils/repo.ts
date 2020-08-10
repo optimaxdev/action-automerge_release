@@ -1,7 +1,10 @@
 import {TGitHubOctokit, IGitHubPushDescription} from '../types/github'
 import {addLabelForPr, createBranch, createNewPR} from '../lib/repo-api'
 import {debug, error} from '../lib/log'
-import {getPRSourceBranchSHA} from '../lib/github-common'
+import {
+  getPRSourceBranchSHA,
+  removeRefPrefixFromBranchName,
+} from '../lib/github-common'
 
 /**
  * Returns name of a branch when automerge failed
@@ -15,7 +18,9 @@ export function getBranchNameForTargetBranchAutomergeFailed(
   targetBranchName: string,
   sourceBranchName: string
 ): string {
-  return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`
+  return `automerge_${removeRefPrefixFromBranchName(
+    sourceBranchName
+  )}_to_${removeRefPrefixFromBranchName(targetBranchName).trim()}`
 }
 
 /**
@@ -46,9 +51,7 @@ export async function createPullRequest(
     sourceBranchName
   )
 
-  debug(
-    `createPullRequest::Create new branch ${automergeCustomBranchName}`
-  )
+  debug(`createPullRequest::Create new branch ${automergeCustomBranchName}`)
   const automergeBranchName = await createBranch(
     octokit,
     pushDescription,

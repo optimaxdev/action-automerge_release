@@ -125,3 +125,13 @@ export function getBranchNameForTargetBranchAutomergeFailed(
   ): string {
     return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`
   }
+
+ /**
+ * Removes refs prefix from a branch name
+ *
+ * @param {TArrayElement<TGitHubApiRestRefResponseData>} refString - string which represented a ref of the branch
+ * @returns {string}
+ */
+export function removeRefPrefixFromBranchName(branchNameStrging: string): string {
+    return branchNameStrging.trim().startsWith(GIT_REF_HEADS_PREFIX) ? getBranchNameByRefString(branchNameStrging) : branchNameStrging.trim();
+}

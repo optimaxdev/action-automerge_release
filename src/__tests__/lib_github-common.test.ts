@@ -1,5 +1,6 @@
+import path from 'path';
 import { GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME } from './__mocks__/github-entities.mock';
-import { getPRRepo, getPRRepoOwner, getPRBranchName, getBranchRef, getBranchNameByRefString, getPRSourceBranchSHA, getBranchNameForTargetBranchAutomergeFailed } from '../lib/github-common';
+import { getPRRepo, getPRRepoOwner, getPRBranchName, getBranchRef, getBranchNameByRefString, getPRSourceBranchSHA, getBranchNameForTargetBranchAutomergeFailed, removeRefPrefixFromBranchName } from '../lib/github-common';
 import {
   getBranchRefPrefix,
   getPRTargetBranchName,
@@ -9,6 +10,8 @@ import {
   GITHUB_PUSH_DESCRIPTION_MOCK,
   GITHUB_BRANCH_REF_DESCRIPTION_MOCK
 } from './__mocks__/github-entities.mock'
+import { isRegExp } from 'util';
+import { GIT_REF_HEADS_PREFIX } from '../const/github';
 
 jest.mock('../const/github', () => ({
   GIT_HEADS_PREFIX: 'heads',
@@ -102,5 +105,43 @@ describe('lib github-common', () => {
         }
       } as any)).toBe('head.sha')
     });
+  })
+
+  describe('removeRefPrefixFromBranchName', () => {
+    it('should remove refs prefix if a branch name is started with', () => {
+      const expectedBranchName = 'expectedBranchName';
+      const branchNameWithRef = path.join(GIT_REF_HEADS_PREFIX, expectedBranchName);
+      expect(removeRefPrefixFromBranchName(
+        branchNameWithRef
+      )).toBe(expectedBranchName);
+    })
+    it('should not remove refs prefix if a branch name is started with "/"', () => {
+      const expectedBranchName = 'expectedBranchName';
+      const branchNameWithRef = path.join('/', GIT_REF_HEADS_PREFIX, expectedBranchName);
+      expect(removeRefPrefixFromBranchName(
+        branchNameWithRef
+      )).toBe(branchNameWithRef);
+    })
+    it('should not remove refs prefix if a branch name is ended with refs prefix', () => {
+      const expectedBranchName = 'expectedBranchName';
+      const branchNameWithRef = path.join(expectedBranchName, GIT_REF_HEADS_PREFIX);
+      expect(removeRefPrefixFromBranchName(
+        branchNameWithRef
+      )).toBe(branchNameWithRef);
+    })
+    it('should trim branch name with refs prefix', () => {
+      const expectedBranchName = 'expectedBranchName';
+      const branchNameWithRef = `   ${path.join(GIT_REF_HEADS_PREFIX, expectedBranchName)}    `;
+      expect(removeRefPrefixFromBranchName(
+        branchNameWithRef
+      )).toBe(expectedBranchName);
+    })
+    it('should trim branch name without refs prefix', () => {
+      const expectedBranchName = 'expectedBranchName';
+      const branchNameWithRef = `   ${expectedBranchName}   `;
+      expect(removeRefPrefixFromBranchName(
+        branchNameWithRef
+      )).toBe(expectedBranchName);
+    })
   })
 })

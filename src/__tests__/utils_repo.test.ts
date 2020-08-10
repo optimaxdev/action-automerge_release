@@ -1,6 +1,8 @@
 import { createPullRequest, getBranchNameForTargetBranchAutomergeFailed } from '../utils/repo';
 import { GITHUB_PUSH_DESCRIPTION_MOCK, BRANCHES_REFS_LIST_MOCK } from './__mocks__/github-entities.mock';
 import { TGitHubOctokit, IGitHubPushDescription } from '../types/github';
+import path from 'path';
+import { GIT_REF_HEADS_PREFIX } from '../const/github';
 
 jest.mock('../lib/repo-api');
 
@@ -38,6 +40,16 @@ describe('utils repo', () => {
         const sourceBranchName = '    sourceBranchName   '
         const targetBranchName = '   targetBranchName    ';
         expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName)).toBe(`automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`);
+      })
+      it('should remove refs prefix from a source branch name', () => {
+        const sourceBranchName = 'sourceBranchName'
+        const targetBranchName = 'targetBranchName';
+        expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, path.join(GIT_REF_HEADS_PREFIX, sourceBranchName))).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}`);
+      })
+      it('should remove refs prefix from a target branch name', () => {
+        const sourceBranchName = 'sourceBranchName'
+        const targetBranchName = 'targetBranchName';
+        expect(getBranchNameForTargetBranchAutomergeFailed(path.join(GIT_REF_HEADS_PREFIX, targetBranchName), sourceBranchName)).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}`);
       })
     })
 
