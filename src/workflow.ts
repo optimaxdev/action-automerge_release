@@ -23,6 +23,7 @@ export async function run(): Promise<void> {
     const {pushDescription, octokit, contextEnv} = initResult
     const branchesList = await fetchBranchesListGraphQL(
       octokit,
+      pushDescription,
       `${getBranchRef(contextEnv.releaseBranchPrfix)}/`,
       contextEnv.releaseBranchTaskPrefix,
       100

@@ -53,25 +53,28 @@ export async function fetchBranchesList(
  */
 export async function fetchBranchesListGraphQL(
   octokit: TGitHubOctokit,
+  pushDescription: IGitHubPushDescription,
   releaseBranchPrfix: string,
   releaseBranchTaskPrefix: string,
   first: number = 1,
 ): Promise<string[]> {
-  const queryText = `{
-    repository(name: "GlassesUSA-Desktop", owner: "optimaxdev") {
-      refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
-        edges {
-          node {
-            name
+  const queryText = `
+    {
+      repository(name: "${getPRRepo(pushDescription)}", owner: "${getPRRepoOwner(pushDescription)}") {
+        refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
+          edges {
+            node {
+              name
+            }
           }
         }
       }
     }
-  }`;
+  `;
   debug('listBranches::start::query', queryText);
   const res = await octokit.graphql(queryText);
-  debug('listBranches::::end', (res as any).data.repository.edges);
-  return (res as any).data.repository.edges.map(({ node }: { node: { name: string } }) => node.name);
+  debug('listBranches::::result', res);
+  return (res as any).repository.refs.edges.map(({ node }: { node: { name: string } }) => node.name);
 }
 
 /**

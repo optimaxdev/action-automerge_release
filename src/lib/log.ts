@@ -18,6 +18,6 @@ export const error = (err: Error) => {
 export const debug = (...args: any[]) => {
     if (process.env.NODE_ENV === 'test') return;
     console.log(`\n \x1b[43m######  \x1b[47m\x1b[30m(${debugItem}.)`);
-    console.log(...args.map((a, idx) => `   \x1b[32m${idx}. ${a && typeof a === "object" ? util.inspect(a, { colors: true, sorted: true, depth: 4 }) : a}\n`));
+    console.log(...args.map((a, idx) => `   \x1b[32m${idx}. ${a && typeof a === "object" ? util.inspect(a, { colors: true, sorted: true, depth: 10 }) : a}\n`));
     console.log(`\x1b[47m\x1b[30m(${debugItem++}.)  \x1b[43m######\n`);
 }

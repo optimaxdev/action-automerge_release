@@ -3869,23 +3869,25 @@ exports.fetchBranchesList = fetchBranchesList;
  * @throws {Error}
  * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
  */
-function fetchBranchesListGraphQL(octokit, releaseBranchPrfix, releaseBranchTaskPrefix, first = 1) {
+function fetchBranchesListGraphQL(octokit, pushDescription, releaseBranchPrfix, releaseBranchTaskPrefix, first = 1) {
     return __awaiter(this, void 0, void 0, function* () {
-        const queryText = `{
-    repository(name: "GlassesUSA-Desktop", owner: "optimaxdev") {
-      refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
-        edges {
-          node {
-            name
+        const queryText = `
+    {
+      repository(name: "${github_common_1.getPRRepo(pushDescription)}", owner: "${github_common_1.getPRRepoOwner(pushDescription)}") {
+        refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
+          edges {
+            node {
+              name
+            }
           }
         }
       }
     }
-  }`;
+  `;
         log_1.debug('listBranches::start::query', queryText);
         const res = yield octokit.graphql(queryText);
-        log_1.debug('listBranches::::end', res.data.repository.edges);
-        return res.data.repository.edges.map(({ node }) => node.name);
+        log_1.debug('listBranches::::result', res);
+        return res.repository.refs.edges.map(({ node }) => node.name);
     });
 }
 exports.fetchBranchesListGraphQL = fetchBranchesListGraphQL;
@@ -4972,7 +4974,7 @@ function run() {
                 return;
             }
             const { pushDescription, octokit, contextEnv } = initResult;
-            const branchesList = yield repo_api_1.fetchBranchesListGraphQL(octokit, `${github_common_1.getBranchRef(contextEnv.releaseBranchPrfix)}/`, contextEnv.releaseBranchTaskPrefix, 100);
+            const branchesList = yield repo_api_1.fetchBranchesListGraphQL(octokit, pushDescription, `${github_common_1.getBranchRef(contextEnv.releaseBranchPrfix)}/`, contextEnv.releaseBranchTaskPrefix, 100);
             log_1.debug('Fetched branches', branchesList);
             if (!branchesList.length) {
                 throw new Error('No branches were found');
@@ -6856,7 +6858,7 @@ exports.debug = (...args) => {
     if (process.env.NODE_ENV === 'test')
         return;
     console.log(`\n \x1b[43m######  \x1b[47m\x1b[30m(${debugItem}.)`);
-    console.log(...args.map((a, idx) => `   \x1b[32m${idx}. ${a && typeof a === "object" ? util_1.default.inspect(a, { colors: true, sorted: true, depth: 4 }) : a}\n`));
+    console.log(...args.map((a, idx) => `   \x1b[32m${idx}. ${a && typeof a === "object" ? util_1.default.inspect(a, { colors: true, sorted: true, depth: 10 }) : a}\n`));
     console.log(`\x1b[47m\x1b[30m(${debugItem++}.)  \x1b[43m######\n`);
 };
 
