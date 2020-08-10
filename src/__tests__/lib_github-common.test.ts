@@ -1,5 +1,5 @@
 import { GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME } from './__mocks__/github-entities.mock';
-import { getPRRepo, getPRRepoOwner, getPRBranchName, getBranchRef, getBranchNameByRefString } from '../lib/github-common';
+import { getPRRepo, getPRRepoOwner, getPRBranchName, getBranchRef, getBranchNameByRefString, getPRSourceBranchSHA, getBranchNameForTargetBranchAutomergeFailed } from '../lib/github-common';
 import {
   getBranchRefPrefix,
   getPRTargetBranchName,
@@ -92,5 +92,15 @@ describe('lib github-common', () => {
       const expectedRefName = `refs/heads/test/branch`;
       expect(getBranchRef(`${branchName}/`)).toBe(expectedRefName);
     })
+  })
+
+  describe('getPRSourceBranchSHA', () => {
+    it('Should return SHA from the head.sha', () => {
+      expect(getPRSourceBranchSHA({
+        head: {
+          sha: 'head.sha'
+        }
+      } as any)).toBe('head.sha')
+    });
   })
 })

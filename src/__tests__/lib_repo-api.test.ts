@@ -4,7 +4,8 @@ import {
   fetchBranchesList,
   fetchReleaseBranchesNamesByAPI,
   mergeBranchTo,
-  addLabelForPr, createBranch
+  addLabelForPr, 
+  createBranch,
 } from '../lib/repo-api'
 import {
   GITHUB_PUSH_DESCRIPTION_MOCK,

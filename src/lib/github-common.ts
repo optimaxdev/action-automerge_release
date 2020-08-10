@@ -56,6 +56,18 @@ export function getPRTargetBranchName(
 }
 
 /**
+ * Retuns SHA of the of the source branche's name
+ *
+ * @export
+ * @param {IGitHubPushDescription} pushDescription
+ */
+export function getPRSourceBranchSHA(
+    pushDescription: IGitHubPushDescription
+) {
+    return pushDescription.head.sha;
+}
+
+/**
  * Return branch name by a branch ref string
  *
  * @param {TArrayElement<TGitHubApiRestRefResponseData>} refString - string which represented a ref of the branch
@@ -97,4 +109,19 @@ export function getBranchNameByRefDescription(refDescription: TArrayElement<TGit
   ) {
     const resultedBranchName = path.join(GIT_REF_HEADS_PREFIX, branchName.trim(), '/');
     return resultedBranchName.substring(0, resultedBranchName.length - 1);
+  }
+
+  /**
+     * Returns name of a branch when automerge failed
+     *
+     * @export
+     * @param {string} sourceBranchName
+     * @param {string} targetBranchName
+     * @returns {string}
+ */
+export function getBranchNameForTargetBranchAutomergeFailed(
+    targetBranchName: string,
+    sourceBranchName: string
+  ): string {
+    return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`
   }
