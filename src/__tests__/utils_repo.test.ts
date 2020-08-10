@@ -33,23 +33,27 @@ describe('utils repo', () => {
       it('should return string with the resulted target branch name', () => {
         const sourceBranchName = 'sourceBranchName'
         const targetBranchName = 'targetBranchName';
-        expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName)).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}`);
+        const datePostfix = `_${Date.now()}`.slice(0, -1);
+        expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName).slice(0, -1)).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}${datePostfix}`);
       })
 
       it('should trims a branch name', () => {
         const sourceBranchName = '    sourceBranchName   '
         const targetBranchName = '   targetBranchName    ';
-        expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName)).toBe(`automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`);
+        const datePostfix = `_${Date.now()}`.slice(0, -1);
+        expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, sourceBranchName).slice(0, -1)).toBe(`automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}${datePostfix}`);
       })
       it('should remove refs prefix from a source branch name', () => {
         const sourceBranchName = 'sourceBranchName'
         const targetBranchName = 'targetBranchName';
-        expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, path.join(GIT_REF_HEADS_PREFIX, sourceBranchName))).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}`);
+        const datePostfix = `_${Date.now()}`.slice(0, -1);
+        expect(getBranchNameForTargetBranchAutomergeFailed(targetBranchName, path.join(GIT_REF_HEADS_PREFIX, sourceBranchName)).slice(0, -1)).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}${datePostfix}`);
       })
       it('should remove refs prefix from a target branch name', () => {
         const sourceBranchName = 'sourceBranchName'
         const targetBranchName = 'targetBranchName';
-        expect(getBranchNameForTargetBranchAutomergeFailed(path.join(GIT_REF_HEADS_PREFIX, targetBranchName), sourceBranchName)).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}`);
+        const datePostfix = `_${Date.now()}`.slice(0, -1);
+        expect(getBranchNameForTargetBranchAutomergeFailed(path.join(GIT_REF_HEADS_PREFIX, targetBranchName), sourceBranchName).slice(0, -1)).toBe(`automerge_${sourceBranchName}_to_${targetBranchName}${datePostfix}`);
       })
     })
 

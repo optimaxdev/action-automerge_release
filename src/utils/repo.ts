@@ -20,7 +20,7 @@ export function getBranchNameForTargetBranchAutomergeFailed(
 ): string {
   return `automerge_${removeRefPrefixFromBranchName(
     sourceBranchName
-  )}_to_${removeRefPrefixFromBranchName(targetBranchName).trim()}`
+  )}_to_${removeRefPrefixFromBranchName(targetBranchName).trim()}_${Date.now()}`
 }
 
 /**

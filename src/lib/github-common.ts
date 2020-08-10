@@ -111,21 +111,6 @@ export function getBranchNameByRefDescription(refDescription: TArrayElement<TGit
     return resultedBranchName.substring(0, resultedBranchName.length - 1);
   }
 
-  /**
-     * Returns name of a branch when automerge failed
-     *
-     * @export
-     * @param {string} sourceBranchName
-     * @param {string} targetBranchName
-     * @returns {string}
- */
-export function getBranchNameForTargetBranchAutomergeFailed(
-    targetBranchName: string,
-    sourceBranchName: string
-  ): string {
-    return `automerge_${sourceBranchName.trim()}_to_${targetBranchName.trim()}`
-  }
-
  /**
  * Removes refs prefix from a branch name
  *
