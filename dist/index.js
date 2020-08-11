@@ -3832,9 +3832,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchRelatedBranchesListGraphQL = exports.fetchBranchesListGraphQL = exports.createBranch = exports.addLabelForPr = exports.createNewPR = exports.checkActivePRExists = exports.mergeBranchTo = exports.fetchReleaseBranchesNamesByAPI = exports.fetchBranchesList = void 0;
 const util_1 = __webpack_require__(669);
+const path_1 = __importDefault(__webpack_require__(622));
 const log_1 = __webpack_require__(936);
 const github_common_1 = __webpack_require__(312);
 /**
@@ -4126,9 +4130,12 @@ exports.fetchBranchesListGraphQL = fetchBranchesListGraphQL;
 function fetchRelatedBranchesListGraphQL(octokit, pushDescription, contextEnv) {
     return __awaiter(this, void 0, void 0, function* () {
         log_1.debug('fetchRelatedBranchesListGraphQL::start');
-        const result = yield fetchBranchesListGraphQL(octokit, github_common_1.getPRRepo(pushDescription), github_common_1.getPRRepoOwner(pushDescription), github_common_1.getBranchHeadsRefPrefix(contextEnv.releaseBranchPrfix), contextEnv.releaseBranchTaskPrefix, 100);
+        const { releaseBranchPrfix } = contextEnv;
+        const result = yield fetchBranchesListGraphQL(octokit, github_common_1.getPRRepo(pushDescription), github_common_1.getPRRepoOwner(pushDescription), github_common_1.getBranchHeadsRefPrefix(releaseBranchPrfix), contextEnv.releaseBranchTaskPrefix, 100);
         log_1.debug('fetchRelatedBranchesListGraphQL::result', result);
-        return result.repository.refs.edges.map(({ node }) => node.name);
+        const relatedBranchesList = result.repository.refs.edges.map(({ node }) => path_1.default.join(releaseBranchPrfix, node.name));
+        log_1.debug('fetchRelatedBranchesListGraphQL::relatedBranchesList', relatedBranchesList);
+        return relatedBranchesList;
     });
 }
 exports.fetchRelatedBranchesListGraphQL = fetchRelatedBranchesListGraphQL;

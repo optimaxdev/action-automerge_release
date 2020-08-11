@@ -433,7 +433,7 @@ describe('lib repo-api', () => {
   })
   describe('fetchBranchesListGraphQL', () => {
     it('should return array of strings', async () => {
-      const resultExpected = ['name1', 'name2'];
+      const branchesNames = ['name1', 'name2'];
       const octokitWithGraphQLResult = {
         ...octokit,
         graphql: jest.fn(() => {
@@ -441,8 +441,8 @@ describe('lib repo-api', () => {
             repository: {
               refs: {
                 edges: [
-                  { node: { name: resultExpected[0] } },
-                  { node: { name: resultExpected[1] } },
+                  { node: { name: branchesNames[0] } },
+                  { node: { name: branchesNames[1] } },
                 ]
               }
             }
@@ -453,8 +453,7 @@ describe('lib repo-api', () => {
         octokitWithGraphQLResult,
         pushDescription,
         contextEnv,
-      )).resolves.toEqual(resultExpected);
-
+      )).resolves.toEqual(branchesNames.map(branchName => `${contextEnv.releaseBranchPrfix}/${branchName}`));
     });
   })
 })

@@ -1,4 +1,5 @@
 import {inspect} from 'util';
+import path from 'path';
 import { IContextEnv } from "../types/context";
 import { IGitHubPushDescription, TGitHubOctokit } from '../types/github';
 import { TGitHubApiRestRefResponseData } from '../types/github-api';
@@ -341,14 +342,17 @@ export async function fetchRelatedBranchesListGraphQL(
   contextEnv: IContextEnv,
 ): Promise<string[]> {
   debug('fetchRelatedBranchesListGraphQL::start');
+  const {releaseBranchPrfix} = contextEnv;
   const result = await fetchBranchesListGraphQL(
     octokit,
     getPRRepo(pushDescription),
     getPRRepoOwner(pushDescription),
-    getBranchHeadsRefPrefix(contextEnv.releaseBranchPrfix),
+    getBranchHeadsRefPrefix(releaseBranchPrfix),
     contextEnv.releaseBranchTaskPrefix,
     100
   )
   debug('fetchRelatedBranchesListGraphQL::result', result);
-  return result.repository.refs.edges.map(({ node }: { node: { name: string } }) => node.name);
+  const relatedBranchesList = result.repository.refs.edges.map(({ node }: { node: { name: string } }) => path.join(releaseBranchPrfix, node.name));
+  debug('fetchRelatedBranchesListGraphQL::relatedBranchesList', relatedBranchesList);
+  return relatedBranchesList;
 } 
