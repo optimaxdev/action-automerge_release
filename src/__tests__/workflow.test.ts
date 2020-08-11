@@ -1,7 +1,8 @@
 import { IGitHubPushDescription, TGitHubOctokit } from '../types/github';
-import { BRANCHES_REFS_LIST_MOCK, GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX } from './__mocks__/github-entities.mock';
+import { BRANCHES_REFS_LIST_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME, GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX } from './__mocks__/github-entities.mock';
 import { IContextEnv } from '../types/context';
 import {run} from '../workflow';
+import { fetchRelatedBranchesListGraphQL } from '../lib/repo-api';
 
 jest.mock('../workflow', () => ({
     run: jest.fn(jest.requireActual('../workflow').run)
@@ -31,7 +32,19 @@ describe('workflow', () => {
         },
         issues: {
           addLabels: jest.fn(() => ({ status: 200 }))
-        }
+        },
+        graphql: jest.fn(() => {
+            return {
+              repository: {
+                refs: {
+                  edges: [
+                    { node: { name: `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}1` } },
+                    { node: { name: `${GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME}2` } },
+                  ]
+                }
+              }
+            }
+          })
       } as unknown as TGitHubOctokit
       pushDescription = {...GITHUB_PUSH_DESCRIPTION_MOCK} as unknown as IGitHubPushDescription
       contextEnv = {
@@ -78,20 +91,20 @@ describe('workflow', () => {
 
         init.mockReturnValue(undefined);
 
-        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')        
+        const {fetchRelatedBranchesListGraphQL} = require('../lib/repo-api')
         const setFailedSpy = jest.spyOn(require('@actions/core'), 'setFailed');
 
         expect(run).toBeCalledTimes(0);
         await expect(run()).resolves.toBe(undefined);
         expect(setFailedSpy).not.toBeCalled();
         expect(init).toBeCalledTimes(1);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(0);
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledTimes(0);
     })
     it('should set workflow failed if the branches related list is empty', async () => {
-        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')
+        const {fetchRelatedBranchesListGraphQL} = require('../lib/repo-api')
         
-        fetchReleaseBranchesNamesByAPI.mockReturnValue([])
-        expect(fetchReleaseBranchesNamesByAPI).not.toBeCalled();
+        fetchRelatedBranchesListGraphQL.mockReturnValue([]);
+        expect(fetchRelatedBranchesListGraphQL).not.toBeCalled();
 
         const setFailedSpy = jest.spyOn(require('@actions/core'), 'setFailed');
         
@@ -99,7 +112,7 @@ describe('workflow', () => {
         expect(run).not.toBeCalled();
         await run();
         expect(run).toBeCalledTimes(1);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledTimes(1);
         expect(setFailedSpy).toBeCalledWith('No branches were found');
     })
     it('should merge PR branch to the main branch provided if no related branches', async () => {
@@ -109,14 +122,14 @@ describe('workflow', () => {
         mergeSourceToBranch.mockReturnValue(undefined)
         expect(mergeSourceToBranch).not.toBeCalled();
 
-        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')
+        const {fetchRelatedBranchesListGraphQL} = require('../lib/repo-api')
         
-        fetchReleaseBranchesNamesByAPI.mockReturnValue(branchesRelatedList);
-        expect(fetchReleaseBranchesNamesByAPI).not.toBeCalled();
+        fetchRelatedBranchesListGraphQL.mockReturnValue(branchesRelatedList);
+        expect(fetchRelatedBranchesListGraphQL).not.toBeCalled();
 
         await run();
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledTimes(1);
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledWith(
             octokit,
             pushDescription,
             contextEnv
@@ -150,17 +163,17 @@ describe('workflow', () => {
         expect(() => mergeSourceToBranch()).toThrow();
         expect(mergeSourceToBranch).toBeCalledTimes(1);
 
-        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')
+        const {fetchRelatedBranchesListGraphQL} = require('../lib/repo-api')
         
-        fetchReleaseBranchesNamesByAPI.mockReturnValue(branchesRelatedList);
-        expect(fetchReleaseBranchesNamesByAPI).not.toBeCalled();
+        fetchRelatedBranchesListGraphQL.mockReturnValue(branchesRelatedList);
+        expect(fetchRelatedBranchesListGraphQL).not.toBeCalled();
 
         const setFailedSpy = jest.spyOn(require('@actions/core'), 'setFailed');
         
         expect(setFailedSpy).not.toBeCalled();
         await expect(run()).resolves.toBe(undefined);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledTimes(1);
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledWith(
             octokit,
             pushDescription,
             contextEnv
@@ -195,17 +208,17 @@ describe('workflow', () => {
         mergeSourceToBranch.mockReturnValue(undefined);
         expect(mergeSourceToBranch).not.toBeCalled();
 
-        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')
+        const {fetchRelatedBranchesListGraphQL} = require('../lib/repo-api')
         
-        fetchReleaseBranchesNamesByAPI.mockReturnValue(branchesRelatedList);
-        expect(fetchReleaseBranchesNamesByAPI).not.toBeCalled();
+        fetchRelatedBranchesListGraphQL.mockReturnValue(branchesRelatedList);
+        expect(fetchRelatedBranchesListGraphQL).not.toBeCalled();
 
         const setFailedSpy = jest.spyOn(require('@actions/core'), 'setFailed');
         
         expect(setFailedSpy).not.toBeCalled();
         await expect(run()).resolves.toBe(undefined);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledTimes(1);
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledWith(
             octokit,
             pushDescription,
             contextEnv
@@ -238,17 +251,17 @@ describe('workflow', () => {
         mergeSourceToBranch.mockReturnValue(undefined);
         expect(mergeSourceToBranch).not.toBeCalled();
 
-        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')
+        const {fetchRelatedBranchesListGraphQL} = require('../lib/repo-api')
         
-        fetchReleaseBranchesNamesByAPI.mockReturnValue(branchesRelatedList);
-        expect(fetchReleaseBranchesNamesByAPI).not.toBeCalled();
+        fetchRelatedBranchesListGraphQL.mockReturnValue(branchesRelatedList);
+        expect(fetchRelatedBranchesListGraphQL).not.toBeCalled();
 
         const setFailedSpy = jest.spyOn(require('@actions/core'), 'setFailed');
         
         expect(setFailedSpy).not.toBeCalled();
         await expect(run()).resolves.toBe(undefined);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledTimes(1);
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledWith(
             octokit,
             pushDescription,
             contextEnv
@@ -279,17 +292,17 @@ describe('workflow', () => {
         getTargetBranchesNames.mockReturnValue([]);
         expect(mergeToBranches).not.toBeCalled();
 
-        const {fetchReleaseBranchesNamesByAPI} = require('../lib/repo-api')
+        const {fetchRelatedBranchesListGraphQL} = require('../lib/repo-api')
         
-        fetchReleaseBranchesNamesByAPI.mockReturnValue(branchesRelatedList);
-        expect(fetchReleaseBranchesNamesByAPI).not.toBeCalled();
+        fetchRelatedBranchesListGraphQL.mockReturnValue(branchesRelatedList);
+        expect(fetchRelatedBranchesListGraphQL).not.toBeCalled();
 
         const setFailedSpy = jest.spyOn(require('@actions/core'), 'setFailed');
         
         expect(setFailedSpy).not.toBeCalled();
         await expect(run()).resolves.toBe(undefined);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledTimes(1);
-        expect(fetchReleaseBranchesNamesByAPI).toBeCalledWith(
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledTimes(1);
+        expect(fetchRelatedBranchesListGraphQL).toBeCalledWith(
             octokit,
             pushDescription,
             contextEnv

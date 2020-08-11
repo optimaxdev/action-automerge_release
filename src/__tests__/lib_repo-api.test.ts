@@ -6,6 +6,7 @@ import {
   mergeBranchTo,
   addLabelForPr, 
   createBranch,
+  fetchBranchesListGraphQL, fetchRelatedBranchesListGraphQL
 } from '../lib/repo-api'
 import {
   GITHUB_PUSH_DESCRIPTION_MOCK,
@@ -17,7 +18,8 @@ jest.mock('../lib/github-common', () => ({
   getBranchRefPrefix: jest.fn(() => 'getBranchRefPrefix'),
   getPRRepo: jest.fn(() => 'getPRRepo'),
   getPRRepoOwner: jest.fn(() => 'getPRRepoOwner'),
-  getBranchRef: jest.fn(() => 'getBranchRef')
+  getBranchRef: jest.fn(() => 'getBranchRef'),
+  getBranchHeadsRefPrefix: jest.fn(() => 'getBranchHeadsRefPref'),
 }))
 
 describe('lib repo-api', () => {
@@ -27,6 +29,7 @@ describe('lib repo-api', () => {
 
   beforeEach(() => {
     octokit = {
+      graphql: jest.fn(() => Promise.resolve('octokit.graphql')),
       git: {
         listMatchingRefs: jest.fn(() => ({...BRANCHES_REFS_LIST_MOCK})),
         createRef: jest.fn(() => ({ status: 201 })), 
@@ -386,4 +389,73 @@ describe('lib repo-api', () => {
       )).rejects.toThrowError('Unknown status code returned from the server')
     })
   })
+
+  describe('fetchBranchesListGraphQL', () => {
+    it('should call the octokit.graphql with query containing all the arguments', async () => {
+      await fetchBranchesListGraphQL(
+        octokit,
+        'repoName',
+        'repoOwner',
+        'releaseBranchRefPrfix',
+        'releaseBranchTaskPrefix',
+        100,
+      );
+      expect(octokit.graphql).lastCalledWith(expect.stringContaining('repoName'))
+      expect(octokit.graphql).lastCalledWith(expect.stringContaining('repoOwner'))
+      expect(octokit.graphql).lastCalledWith(expect.stringContaining('releaseBranchRefPrfix'))
+      expect(octokit.graphql).lastCalledWith(expect.stringContaining('releaseBranchTaskPrefix'))
+      expect(octokit.graphql).lastCalledWith(expect.stringContaining('100'))
+    });
+    it('should return result of octokit.graphql', async () => {
+      await expect(fetchBranchesListGraphQL(
+        octokit,
+        'repoName',
+        'repoOwner',
+        'releaseBranchRefPrfix',
+        'releaseBranchTaskPrefix',
+        100,
+      )).resolves.toBe('octokit.graphql');
+    });
+    it('should throw if octokit,graphql thrown', async () => {
+      const octokitThrow = {
+        ...octokit,
+        graphql: jest.fn(() => {throw new Error('Error octokit')})
+      }
+      await expect(fetchBranchesListGraphQL(
+        octokitThrow,
+        'repoName',
+        'repoOwner',
+        'releaseBranchRefPrfix',
+        'releaseBranchTaskPrefix',
+        100,
+      )).rejects.toThrow('Error octokit');
+    })
+  })
+  describe('fetchBranchesListGraphQL', () => {
+    it('should return array of strings', async () => {
+      const resultExpected = ['name1', 'name2'];
+      const octokitWithGraphQLResult = {
+        ...octokit,
+        graphql: jest.fn(() => {
+          return {
+            repository: {
+              refs: {
+                edges: [
+                  { node: { name: resultExpected[0] } },
+                  { node: { name: resultExpected[1] } },
+                ]
+              }
+            }
+          }
+        })
+      }
+      await expect(fetchRelatedBranchesListGraphQL(
+        octokitWithGraphQLResult,
+        pushDescription,
+        contextEnv,
+      )).resolves.toEqual(resultExpected);
+
+    });
+  })
 })
+

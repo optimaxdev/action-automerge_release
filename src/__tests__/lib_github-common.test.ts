@@ -1,6 +1,6 @@
 import path from 'path';
 import { GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME } from './__mocks__/github-entities.mock';
-import { getPRRepo, getPRRepoOwner, getPRBranchName, getBranchRef, getBranchNameByRefString, getPRSourceBranchSHA, getBranchNameForTargetBranchAutomergeFailed, removeRefPrefixFromBranchName } from '../lib/github-common';
+import { getPRRepo, getPRRepoOwner, getPRBranchName, getBranchRef, getBranchNameByRefString, getPRSourceBranchSHA, removeRefPrefixFromBranchName, getBranchHeadsRefPrefix } from '../lib/github-common';
 import {
   getBranchRefPrefix,
   getPRTargetBranchName,
@@ -10,7 +10,6 @@ import {
   GITHUB_PUSH_DESCRIPTION_MOCK,
   GITHUB_BRANCH_REF_DESCRIPTION_MOCK
 } from './__mocks__/github-entities.mock'
-import { isRegExp } from 'util';
 import { GIT_REF_HEADS_PREFIX } from '../const/github';
 
 jest.mock('../const/github', () => ({
@@ -142,6 +141,21 @@ describe('lib github-common', () => {
       expect(removeRefPrefixFromBranchName(
         branchNameWithRef
       )).toBe(expectedBranchName);
+    })
+  })
+
+  describe('getBranchHeadsRefPrefix', () => {
+    test('Should returns includes the prefix GIT_REF_HEADS_PREFIX', () => {
+      const branchName = 'expectedBranchName';
+      expect(getBranchHeadsRefPrefix(branchName).startsWith(GIT_REF_HEADS_PREFIX)).toBe(true)
+    })
+    test('Should ends with the slash', () => {
+      const branchName = 'expectedBranchName';
+      expect(getBranchHeadsRefPrefix(branchName).endsWith('/')).toBe(true)
+    })
+    test('Should includes the branch name', () => {
+      const branchName = 'expectedBranchName';
+      expect(getBranchHeadsRefPrefix(branchName).includes(branchName)).toBe(true)
     })
   })
 })

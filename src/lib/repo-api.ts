@@ -3,7 +3,7 @@ import { IContextEnv } from "../types/context";
 import { IGitHubPushDescription, TGitHubOctokit } from '../types/github';
 import { TGitHubApiRestRefResponseData } from '../types/github-api';
 import { debug } from './log';
-import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner, getBranchRef, getBranchNameByRefString } from './github-common';
+import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner, getBranchRef, getBranchNameByRefString, getBranchHeadsRefPrefix } from './github-common';
 
 /**
  * List branches via the GitHub API
@@ -36,45 +36,6 @@ export async function fetchBranchesList(
   const res = await octokit.git.listMatchingRefs(requestParams);
   debug('listBranches::::end', res);
   return res.data as TGitHubApiRestRefResponseData;
-}
-
-/**
- * List branches via the GitHub GraphQL API
- * https://developer.github.com/v3/git/refs/#list-matching-references
- *
- * @export
- * @param {TGitHubOctokit} octokit
- * @param {IGitHubPushDescription} pushDescription
- * @param {number} [perPage=100] - how many items to fetch on one page
- * @param {number} [page=1] - requested page number
- * @param {string} [owner]
- * @throws {Error}
- * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
- */
-export async function fetchBranchesListGraphQL(
-  octokit: TGitHubOctokit,
-  pushDescription: IGitHubPushDescription,
-  releaseBranchPrfix: string,
-  releaseBranchTaskPrefix: string,
-  first: number = 1,
-): Promise<string[]> {
-  const queryText = `
-    {
-      repository(name: "${getPRRepo(pushDescription)}", owner: "${getPRRepoOwner(pushDescription)}") {
-        refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
-          edges {
-            node {
-              name
-            }
-          }
-        }
-      }
-    }
-  `;
-  debug('listBranches::start::query', queryText);
-  const res = await octokit.graphql(queryText);
-  debug('listBranches::::result', res);
-  return (res as any).repository.refs.edges.map(({ node }: { node: { name: string } }) => node.name);
 }
 
 /**
@@ -319,3 +280,75 @@ export async function createBranch(
   }
   return getBranchNameByRefString(response.data.ref);
 }
+
+/**
+ * List branches via the GitHub GraphQL API
+ * https://developer.github.com/v3/git/refs/#list-matching-references
+ *
+ * @export
+ * @param {TGitHubOctokit} octokit
+ * @param {string} repoName - e.g "test_github_actions"
+ * @param {string} repoName - e.g "optimaxdev"
+ * @param {string} releaseBranchRefPrfix - e.g "refs/heads/release"
+ * @param {string} releaseBranchTaskPrefix - e.g. "REL-"
+ * @param {number} first - how many items to fetch
+ * @throws {Error}
+ * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
+ */
+export async function fetchBranchesListGraphQL(
+  octokit: TGitHubOctokit,
+  repoName: string,
+  repoOwner: string,
+  releaseBranchRefPrfix: string,
+  releaseBranchTaskPrefix: string,
+  first: number = 1,
+): Promise<{
+  repository: {
+    refs: {
+      edges: Array<{ node: {name: string} }>
+    }
+  }
+}> {
+  const queryText = `
+    {
+      repository(name: "${repoName}", owner: "${repoOwner}") {
+        refs(refPrefix: "${releaseBranchRefPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
+          edges {
+            node {
+              name
+            }
+          }
+        }
+      }
+    }
+  `;
+  debug('listBranches::start::query', queryText);
+  return await octokit.graphql(queryText);
+}
+
+/**
+ *
+ *
+ * @export
+ * @param {TGitHubOctokit} octokit
+ * @param {IGitHubPushDescription} pushDescription
+ * @param {IContextEnv} contextEnv
+ * @returns {Promise<string[]>}
+ */
+export async function fetchRelatedBranchesListGraphQL(
+  octokit: TGitHubOctokit,
+  pushDescription: IGitHubPushDescription,
+  contextEnv: IContextEnv,
+): Promise<string[]> {
+  debug('fetchRelatedBranchesListGraphQL::start');
+  const result = await fetchBranchesListGraphQL(
+    octokit,
+    getPRRepo(pushDescription),
+    getPRRepoOwner(pushDescription),
+    getBranchHeadsRefPrefix(contextEnv.releaseBranchPrfix),
+    contextEnv.releaseBranchTaskPrefix,
+    100
+  )
+  debug('fetchRelatedBranchesListGraphQL::result', result);
+  return result.repository.refs.edges.map(({ node }: { node: { name: string } }) => node.name);
+} 

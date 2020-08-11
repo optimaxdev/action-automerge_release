@@ -900,7 +900,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeRefPrefixFromBranchName = exports.getBranchRef = exports.getBranchRefPrefix = exports.getBranchNameByRefDescription = exports.getBranchNameByRefString = exports.getPRSourceBranchSHA = exports.getPRTargetBranchName = exports.getPRRepoOwner = exports.getPRRepo = exports.getPRBranchName = void 0;
+exports.removeRefPrefixFromBranchName = exports.getBranchRef = exports.getBranchHeadsRefPrefix = exports.getBranchRefPrefix = exports.getBranchNameByRefDescription = exports.getBranchNameByRefString = exports.getPRSourceBranchSHA = exports.getPRTargetBranchName = exports.getPRRepoOwner = exports.getPRRepo = exports.getPRBranchName = void 0;
 const path_1 = __importDefault(__webpack_require__(622));
 const github_1 = __webpack_require__(272);
 /**
@@ -986,6 +986,16 @@ function getBranchRefPrefix(branchPrefix) {
     return path_1.default.join(github_1.GIT_HEADS_PREFIX, branchPrefix.trim(), '/');
 }
 exports.getBranchRefPrefix = getBranchRefPrefix;
+/**
+ * get a reference for the branch by it's name
+ *
+ * @export
+ * @param {string} branchName
+ */
+function getBranchHeadsRefPrefix(branchName) {
+    return `${getBranchRef(branchName)}/`;
+}
+exports.getBranchHeadsRefPrefix = getBranchHeadsRefPrefix;
 /**
  * get a reference for the branch by it's name
  *
@@ -3823,7 +3833,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createBranch = exports.addLabelForPr = exports.createNewPR = exports.checkActivePRExists = exports.mergeBranchTo = exports.fetchReleaseBranchesNamesByAPI = exports.fetchBranchesListGraphQL = exports.fetchBranchesList = void 0;
+exports.fetchRelatedBranchesListGraphQL = exports.fetchBranchesListGraphQL = exports.createBranch = exports.addLabelForPr = exports.createNewPR = exports.checkActivePRExists = exports.mergeBranchTo = exports.fetchReleaseBranchesNamesByAPI = exports.fetchBranchesList = void 0;
 const util_1 = __webpack_require__(669);
 const log_1 = __webpack_require__(936);
 const github_common_1 = __webpack_require__(312);
@@ -3856,41 +3866,6 @@ function fetchBranchesList(octokit, pushDescription, branchPrefix, page = 1, per
     });
 }
 exports.fetchBranchesList = fetchBranchesList;
-/**
- * List branches via the GitHub GraphQL API
- * https://developer.github.com/v3/git/refs/#list-matching-references
- *
- * @export
- * @param {TGitHubOctokit} octokit
- * @param {IGitHubPushDescription} pushDescription
- * @param {number} [perPage=100] - how many items to fetch on one page
- * @param {number} [page=1] - requested page number
- * @param {string} [owner]
- * @throws {Error}
- * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
- */
-function fetchBranchesListGraphQL(octokit, pushDescription, releaseBranchPrfix, releaseBranchTaskPrefix, first = 1) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const queryText = `
-    {
-      repository(name: "${github_common_1.getPRRepo(pushDescription)}", owner: "${github_common_1.getPRRepoOwner(pushDescription)}") {
-        refs(refPrefix: "${releaseBranchPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
-          edges {
-            node {
-              name
-            }
-          }
-        }
-      }
-    }
-  `;
-        log_1.debug('listBranches::start::query', queryText);
-        const res = yield octokit.graphql(queryText);
-        log_1.debug('listBranches::::result', res);
-        return res.repository.refs.edges.map(({ node }) => node.name);
-    });
-}
-exports.fetchBranchesListGraphQL = fetchBranchesListGraphQL;
 /**
  * Fetch all Release branches to this PR's
  * target branch.
@@ -4105,6 +4080,58 @@ function createBranch(octokit, pushDescription, branchName, fromBranchCommitSha)
     });
 }
 exports.createBranch = createBranch;
+/**
+ * List branches via the GitHub GraphQL API
+ * https://developer.github.com/v3/git/refs/#list-matching-references
+ *
+ * @export
+ * @param {TGitHubOctokit} octokit
+ * @param {string} repoName - e.g "test_github_actions"
+ * @param {string} repoName - e.g "optimaxdev"
+ * @param {string} releaseBranchRefPrfix - e.g "refs/heads/release"
+ * @param {string} releaseBranchTaskPrefix - e.g. "REL-"
+ * @param {number} first - how many items to fetch
+ * @throws {Error}
+ * @returns {TGitHubApiRestRefResponseData} - descriptions of the branches
+ */
+function fetchBranchesListGraphQL(octokit, repoName, repoOwner, releaseBranchRefPrfix, releaseBranchTaskPrefix, first = 1) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const queryText = `
+    {
+      repository(name: "${repoName}", owner: "${repoOwner}") {
+        refs(refPrefix: "${releaseBranchRefPrfix}", orderBy: {field: TAG_COMMIT_DATE, direction: DESC}, first: ${first}, direction: DESC, query: "${releaseBranchTaskPrefix}") {
+          edges {
+            node {
+              name
+            }
+          }
+        }
+      }
+    }
+  `;
+        log_1.debug('listBranches::start::query', queryText);
+        return yield octokit.graphql(queryText);
+    });
+}
+exports.fetchBranchesListGraphQL = fetchBranchesListGraphQL;
+/**
+ *
+ *
+ * @export
+ * @param {TGitHubOctokit} octokit
+ * @param {IGitHubPushDescription} pushDescription
+ * @param {IContextEnv} contextEnv
+ * @returns {Promise<string[]>}
+ */
+function fetchRelatedBranchesListGraphQL(octokit, pushDescription, contextEnv) {
+    return __awaiter(this, void 0, void 0, function* () {
+        log_1.debug('fetchRelatedBranchesListGraphQL::start');
+        const result = yield fetchBranchesListGraphQL(octokit, github_common_1.getPRRepo(pushDescription), github_common_1.getPRRepoOwner(pushDescription), github_common_1.getBranchHeadsRefPrefix(contextEnv.releaseBranchPrfix), contextEnv.releaseBranchTaskPrefix, 100);
+        log_1.debug('fetchRelatedBranchesListGraphQL::result', result);
+        return result.repository.refs.edges.map(({ node }) => node.name);
+    });
+}
+exports.fetchRelatedBranchesListGraphQL = fetchRelatedBranchesListGraphQL;
 
 
 /***/ }),
@@ -4963,7 +4990,6 @@ const core = __importStar(__webpack_require__(470));
 const init_1 = __webpack_require__(207);
 const repo_api_1 = __webpack_require__(511);
 const log_1 = __webpack_require__(936);
-const github_common_1 = __webpack_require__(312);
 const merge_to_release_1 = __webpack_require__(906);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -4974,7 +5000,7 @@ function run() {
                 return;
             }
             const { pushDescription, octokit, contextEnv } = initResult;
-            const branchesList = yield repo_api_1.fetchBranchesListGraphQL(octokit, pushDescription, `${github_common_1.getBranchRef(contextEnv.releaseBranchPrfix)}/`, contextEnv.releaseBranchTaskPrefix, 100);
+            const branchesList = yield repo_api_1.fetchRelatedBranchesListGraphQL(octokit, pushDescription, contextEnv);
             log_1.debug('Fetched branches', branchesList);
             if (!branchesList.length) {
                 throw new Error('No branches were found');

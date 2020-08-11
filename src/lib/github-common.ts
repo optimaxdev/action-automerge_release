@@ -104,6 +104,18 @@ export function getBranchNameByRefDescription(refDescription: TArrayElement<TGit
    * @export
    * @param {string} branchName
    */
+  export function getBranchHeadsRefPrefix(
+    branchName: string,
+  ) {
+    return `${getBranchRef(branchName)}/`;
+  }
+
+  /**
+   * get a reference for the branch by it's name
+   *
+   * @export
+   * @param {string} branchName
+   */
   export function getBranchRef(
     branchName: string,
   ) {
