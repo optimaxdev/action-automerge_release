@@ -42,7 +42,7 @@
     "js-yaml": "^3.14.0",
     "prettier": "2.2.1",
     "ts-jest": "^24.3.0",
-    "typescript": "^3.9.7"
+    "typescript": "^4.3.2"
   },
   "peerDependencies": {
     "@octokit/types": "^5.2.0"
