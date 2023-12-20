@@ -6,7 +6,7 @@ import { TGitHubApiRestRefResponseData } from '../types/github-api';
 import { debug } from './log';
 import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner, getBranchRef, getBranchNameByRefString, getBranchHeadsRefPrefix } from './github-common';
 
-const PR_DESCRIPTION_TEXT = 'Auto-merge pull request created by Optimax';
+const PR_DESCRIPTION_TEXT = 'Auto-merge pull request created by Automerge-bot';
 
 /**
  * List branches via the GitHub API
@@ -198,9 +198,7 @@ export async function createNewPR(
     title: `Merge release branch ${sourceBranchName} to the release branch ${targetBranchName}`,
     draft: false,
     maintainer_can_modify: true,
-    body: {
-      body: PR_DESCRIPTION_TEXT,
-    }
+    body: PR_DESCRIPTION_TEXT,
   };
   debug('createNewPR::start::conf:', requestConf);
   const response = await octokit.pulls.create(requestConf);
