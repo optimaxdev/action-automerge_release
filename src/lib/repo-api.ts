@@ -6,6 +6,8 @@ import { TGitHubApiRestRefResponseData } from '../types/github-api';
 import { debug } from './log';
 import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner, getBranchRef, getBranchNameByRefString, getBranchHeadsRefPrefix } from './github-common';
 
+const PR_DESCRIPTION_TEXT = 'Auto-merge pull request created by Automerge-bot';
+
 /**
  * List branches via the GitHub API
  * https://developer.github.com/v3/git/refs/#list-matching-references
@@ -196,13 +198,14 @@ export async function createNewPR(
     title: `Merge release branch ${sourceBranchName} to the release branch ${targetBranchName}`,
     draft: false,
     maintainer_can_modify: true,
+    body: PR_DESCRIPTION_TEXT,
   };
   debug('createNewPR::start::conf:', requestConf);
   const response = await octokit.pulls.create(requestConf);
   debug('createNewPR::response:', response);
 
   if (response.status === 201) {
-    // succesfully created
+    // successfully created
     return Number(response.data.number);
   }
   debug('createNewPR::failed::unknown-status-code', response.status);

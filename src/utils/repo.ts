@@ -31,7 +31,7 @@ export function getBranchNameForTargetBranchAutomergeFailed(
  * @export
  * @param {TGitHubOctokit} octokit
  * @param {IGitHubPushDescription} pushDescription
- * @param {string} brnachName
+ * @param {string} branchName
  * @param {string} sourceBranchName
  * @param {string} pushDescriptionLabel - a label for pull request if created automatically
  * @returns {(Promise<void>)} - returns void if a pull request is exists or was successfully created
