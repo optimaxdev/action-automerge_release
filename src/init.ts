@@ -43,7 +43,7 @@ export function getPushDescription(
   //https://developer.github.com/webhooks/event-payloads/#pull_request
   if (context.payload.pull_request) {
     // pull request interface mathes to the IGitHubPushDescription
-    return (context.payload.pull_request as unknown) as IGitHubPushDescription
+    return context.payload.pull_request as unknown as IGitHubPushDescription
   }
 
   //https://developer.github.com/webhooks/event-payloads/#push

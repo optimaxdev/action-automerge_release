@@ -52,7 +52,7 @@ export async function run(): Promise<void> {
     // should merge to related releases
     await mergeToBranches(octokit, pushDescription, contextEnv, targetBranches)
   } catch (err) {
-    error(err)
-    core.setFailed(err.message)
+    error(err as Error)
+    core.setFailed((err as Error).message)
   }
 }

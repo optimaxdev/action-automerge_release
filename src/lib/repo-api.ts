@@ -105,22 +105,23 @@ export async function mergeBranchTo(
   debug('mergeBranchTo::start', 'targetBranchName', targetBranchName, 'sourceBranchName', sourceBranchName, 'params', requestParams);
   let response;
   try {
-    response = await octokit.repos.merge(requestParams);
+    response = await octokit.rest.repos.merge(requestParams);
+    
   } catch(err) {
     debug('mergeBranchTo::request-throw', err);
     response = err;
   }
   debug('mergeBranchTo::response', 'targetBranchName', targetBranchName, 'sourceBranchName', sourceBranchName, 'response', response);
   const {status, data} = response;
-  if (status === 409) {
+  if (Number(status) === 409) {
     debug('mergeBranchTo::merge-conflict', 'targetBranchName', targetBranchName, 'sourceBranchName', sourceBranchName);
     return false;
   }
-  if (status === 204) {
+  if (Number(status) === 204) {
     debug('mergeBranchTo::nothing-to-merge', 'targetBranchName', targetBranchName, 'sourceBranchName', sourceBranchName);
     return
   }
-  if (status === 201) {
+  if (Number(status) === 201) {
     debug('mergeBranchTo::successfully-merged', 'targetBranchName', targetBranchName, 'sourceBranchName', sourceBranchName);
     return
   }
@@ -241,7 +242,7 @@ export async function addLabelForPr(
     labels: Array.isArray(label) ? label : [label],
   };
   debug('addLabelForPr::start::conf:', requestConf);
-  const response = await octokit.issues.addLabels(requestConf);
+  const response = await octokit.rest.issues.addLabels(requestConf);
   debug('addLabelForPr::response:', response);
 
   if (response.status === 200) {

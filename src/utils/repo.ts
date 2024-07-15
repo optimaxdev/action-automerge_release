@@ -90,7 +90,7 @@ export async function createPullRequest(
       debug(
         `createPullRequest::failed to add label for Pull request from ${automergeBranchName} to ${targetBranchName}`
       )
-      error(err)
+      error(err as Error)
     }
   }
 }

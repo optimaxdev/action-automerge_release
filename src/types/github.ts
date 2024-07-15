@@ -1,4 +1,5 @@
 import * as gitHub from '@actions/github'
+import {GitHub} from '@actions/github/lib/utils'
 
 /**
  * Description of a merged branch(if triggered on push)
@@ -6,7 +7,6 @@ import * as gitHub from '@actions/github'
  * If pushed not according to a pull request,
  * then base.ref === head.ref and equals to
  * the branch where commits were pushed.
- * 
  * @export
  * @interface IGitHubPushDescription
  */
@@ -62,4 +62,4 @@ export interface IGitHubPushDescription {
 /**
  * Octokit tool instance
  * */
-export type TGitHubOctokit = ReturnType<typeof gitHub.getOctokit>
+export type TGitHubOctokit = InstanceType<typeof GitHub>
