@@ -8,10 +8,10 @@
     "build": "tsc",
     "format": "prettier --write **/*.ts",
     "format-check": "prettier --check **/*.ts",
-    "lint": "eslint src/**/*.ts",
-    "package": "ncc build --source-map",
+    "lint": "eslint src/**/*.ts --ignore-pattern src/**/__tests__/**",
+    "package": "ncc build src/main.ts --source-map",
     "test": "jest",
-    "all": "npm run build && npm run format && npm run package",
+    "all": "yarn format && yarn package",
     "push": "yarn all && git add -A && git commit -m 'commit' && git push --force"
   },
   "repository": {
@@ -30,10 +30,11 @@
     "@actions/github": "^6.0.0"
   },
   "devDependencies": {
+    "@octokit/types": "^13.5.0",
     "@types/jest": "^26.0.20",
     "@types/node": "^15.12.0",
     "@typescript-eslint/parser": "^5.59.0",
-    "@zeit/ncc": "^0.22.3",
+    "@vercel/ncc": "^0.38.1",
     "eslint": "^8.36.0",
     "eslint-plugin-github": "^4.7.0",
     "eslint-plugin-jest": "^27.2.1",
@@ -43,8 +44,5 @@
     "prettier": "2.8.7",
     "ts-jest": "^24.3.0",
     "typescript": "^5.0.4"
-  },
-  "peerDependencies": {
-    "@octokit/types": "^13.5.0"
   }
 }

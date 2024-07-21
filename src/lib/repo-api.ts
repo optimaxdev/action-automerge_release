@@ -1,10 +1,13 @@
 import {inspect} from 'util';
 import path from 'path';
+import { RestEndpointMethodTypes } from "@octokit/plugin-rest-endpoint-methods";
 import { IContextEnv } from "../types/context";
 import { IGitHubPushDescription, TGitHubOctokit } from '../types/github';
 import { TGitHubApiRestRefResponseData } from '../types/github-api';
 import { debug } from './log';
 import { getBranchRefPrefix, getBranchNameByRefDescription, getPRRepo, getPRRepoOwner, getBranchRef, getBranchNameByRefString, getBranchHeadsRefPrefix } from './github-common';
+
+type RepoMergeRestResponseType = RestEndpointMethodTypes['repos']['merge']['response'];
 
 const PR_DESCRIPTION_TEXT = 'Auto-merge pull request created by Automerge-bot';
 
@@ -36,13 +39,13 @@ export async function fetchBranchesList(
     per_page: perPage
   };
   debug('listBranches::start::params', requestParams);
-  const res = await octokit.git.listMatchingRefs(requestParams);
+  const res = await octokit.request('GET /repos/{owner}/{repo}/git/matching-refs/{ref}', requestParams);
   debug('listBranches::::end', res);
   return res.data as TGitHubApiRestRefResponseData;
 }
 
 /**
- * Fetch all Release branches to this PR's 
+ * Fetch all Release branches to this PR's
  * target branch.
  *
  * @export
@@ -82,7 +85,7 @@ export async function fetchReleaseBranchesNamesByAPI(
 /**
  * Merge  sourceBranchName to the targetBranchName
  * https://developer.github.com/v3/repos/merging/#merge-a-branch
- * 
+ *
  * @param {TGitHubOctokit} octokit
  * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName
@@ -95,7 +98,7 @@ export async function mergeBranchTo(
   pushDescription: IGitHubPushDescription,
   targetBranchName: string,
   sourceBranchName: string,
-) { 
+) {
   const requestParams = {
     owner: getPRRepoOwner(pushDescription),
     repo: getPRRepo(pushDescription),
@@ -103,13 +106,12 @@ export async function mergeBranchTo(
     head: sourceBranchName,
   };
   debug('mergeBranchTo::start', 'targetBranchName', targetBranchName, 'sourceBranchName', sourceBranchName, 'params', requestParams);
-  let response;
+  let response: RepoMergeRestResponseType;
   try {
-    response = await octokit.rest.repos.merge(requestParams);
-    
+    response = await octokit.request('POST /repos/{owner}/{repo}/merges', requestParams);
   } catch(err) {
     debug('mergeBranchTo::request-throw', err);
-    response = err;
+    response = err as RepoMergeRestResponseType;
   }
   debug('mergeBranchTo::response', 'targetBranchName', targetBranchName, 'sourceBranchName', sourceBranchName, 'response', response);
   const {status, data} = response;
@@ -139,7 +141,7 @@ export async function mergeBranchTo(
  * and has the open state
  * https://octokit.github.io/rest.js/v18#pulls
  * https://developer.github.com/v3/pulls/#list-pull-requests
- * 
+ *
  * @param {TGitHubOctokit} octokit
  * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
@@ -163,7 +165,7 @@ export async function checkActivePRExists(
     page: 1
   };
   debug('checkActivePRExists::start::conf:', requestConf);
-  const response = await octokit.pulls.list(requestConf);
+  const response = await octokit.request('GET /repos/{owner}/{repo}/pulls', requestConf);
   debug('checkActivePRExists::response:', response);
 
   if (response.status === 200) {
@@ -177,7 +179,7 @@ export async function checkActivePRExists(
  * Create a new pull request from sourceBranchName to the targetBranchName
  * https://octokit.github.io/rest.js/v18#pulls
  * https://developer.github.com/v3/pulls/#create-a-pull-request
- * 
+ *
  * @param {TGitHubOctokit} octokit
  * @param {IGitHubPushDescription} pushDescription
  * @param {string} targetBranchName - e.g. 'master'
@@ -202,7 +204,7 @@ export async function createNewPR(
     body: PR_DESCRIPTION_TEXT,
   };
   debug('createNewPR::start::conf:', requestConf);
-  const response = await octokit.pulls.create(requestConf);
+  const response = await octokit.request('POST /repos/{owner}/{repo}/pulls', requestConf);
   debug('createNewPR::response:', response);
 
   if (response.status === 201) {
@@ -219,8 +221,8 @@ export async function createNewPR(
  * by it's number.
  * If the label is not exists it will be created automatically.
  * https://octokit.github.io/rest.js/v18#pulls-create
- * https://developer.github.com/v3/issues/labels/#add-labels-to-an-issue 
- * 
+ * https://developer.github.com/v3/issues/labels/#add-labels-to-an-issue
+ *
  * @export
  * @param {TGitHubOctokit} octokit
  * @param {IGitHubPushDescription} pushDescription
@@ -242,7 +244,7 @@ export async function addLabelForPr(
     labels: Array.isArray(label) ? label : [label],
   };
   debug('addLabelForPr::start::conf:', requestConf);
-  const response = await octokit.rest.issues.addLabels(requestConf);
+  const response = await octokit.request('POST /repos/{owner}/{repo}/issues/{issue_number}/labels', requestConf);
   debug('addLabelForPr::response:', response);
 
   if (response.status === 200) {
@@ -257,8 +259,8 @@ export async function addLabelForPr(
  * Create a new branch from branch wich
  * has the latest commit sha
  * https://developer.github.com/v3/git/refs/#create-a-reference
- * 
- * 
+ *
+ *
  * @export
  * @param {string} branchName - new branche's name
  * @param {string} fromBranchCommitSha - sha of the latest commit
@@ -278,7 +280,7 @@ export async function createBranch(
     sha: fromBranchCommitSha,
   };
   debug('createBranch::start::conf:', requestConf);
-  const response = await octokit.git.createRef(requestConf);
+  const response = await octokit.request('POST /repos/{owner}/{repo}/git/refs', requestConf);
   debug('createBranch::end::response:', response);
   if (response.status !== 201) {
     throw new Error('Unknown status code returned from the server');

@@ -1,9 +1,4 @@
-import {GitListMatchingRefsResponseData, OctokitResponse} from '@octokit/types'
+import {Endpoints} from '@octokit/types'
 
-export type TGitHubApiRestRefResponse = OctokitResponse<
-  GitListMatchingRefsResponseData
->
-
-export type TGitHubApiRestRefResponseData = OctokitResponse<
-  GitListMatchingRefsResponseData
->['data']
+export type TGitHubApiRestRefResponseData =
+  Endpoints['GET /repos/{owner}/{repo}/git/matching-refs/{ref}']['response']['data']
