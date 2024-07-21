@@ -1,5 +1,4 @@
-import * as gitHub from '@actions/github'
-import {GitHub} from '@actions/github/lib/utils'
+import {getOctokit} from '@actions/github'
 
 /**
  * Description of a merged branch(if triggered on push)
@@ -62,4 +61,4 @@ export interface IGitHubPushDescription {
 /**
  * Octokit tool instance
  * */
-export type TGitHubOctokit = InstanceType<typeof GitHub>
+export type TGitHubOctokit = ReturnType<typeof getOctokit>
