@@ -10,7 +10,7 @@ import {mergeBranchTo} from '../lib/repo-api';
 import {createPullRequest} from '../utils/repo';
 import { GITHUB_PUSH_DESCRIPTION_MOCK, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_PREFIX, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_TARGET_BRANCH_FULL_NAME, GITHUB_BRANCH_REF_DESCRIPTION_MOCK_BRANCH_NAME_VERSION } from './__mocks__/github-entities.mock';
 import { IContextEnv } from '../types/context';
-import { getTargetBranchesNames, getBranchNameWithoutRefsPrefix } from '../merge-to-release';
+import { getTargetBranchesNames, getBranchNameWithoutRefsPrefix, getBranchSerialNumber, versionStringToNumber } from '../merge-to-release';
 
 jest.mock('../lib/repo-api');
 jest.mock('../utils/repo');
@@ -257,6 +257,69 @@ describe('merge-to-release module', () => {
       ).toBe(expected)
     })
   })
+
+  describe('getBranchSerialNumber', () => {
+    test('should correctly convert release/1.0.0 to serial number', () => {
+      expect(getBranchSerialNumber('release/1.0.0')).toBe(100);
+      expect(getBranchSerialNumber('release/2.5.42')).toBe(20542);
+      expect(getBranchSerialNumber('release/10.10.100')).toBe(1010100);
+    });
+  
+    test('should return undefined for invalid version-style branches', () => {
+      expect(getBranchSerialNumber('release/1.0')).toBeUndefined();
+      expect(getBranchSerialNumber('release/2.5')).toBeUndefined();
+      expect(getBranchSerialNumber('release/10.100')).toBeUndefined();
+    });
+  
+    test('should correctly handle web-style branches', () => {
+      expect(getBranchSerialNumber('release/RLS-001')).toBeDefined();  // Assuming a valid result for RLS-001
+      expect(getBranchSerialNumber('release/RLS-002')).toBeDefined();  // Assuming a valid result for RLS-002
+      expect(getBranchSerialNumber('release/RLS-100')).toBeDefined();  // Assuming a valid result for RLS-100
+    });
+  
+    test('should return undefined for non-version and non-web branches', () => {
+      expect(getBranchSerialNumber('release/abc')).toBeUndefined();
+      expect(getBranchSerialNumber('release/xyz123')).toBeUndefined();
+      expect(getBranchSerialNumber('feature/1.0.0')).toBeUndefined();
+    });
+  
+    test('should handle edge cases for version-style branches', () => {
+      expect(getBranchSerialNumber('release/0.1.0')).toBe(10);
+      expect(getBranchSerialNumber('release/1.0.1')).toBe(101);
+      expect(getBranchSerialNumber('release/9.9.9')).toBe(999);
+    });
+  });
+
+  describe('versionStringToNumber', () => {
+    test('should correctly convert version strings to numbers', () => {
+      expect(versionStringToNumber('1.0.0')).toBe(100);
+      expect(versionStringToNumber('2.5.42')).toBe(20542);
+      expect(versionStringToNumber('10.10.100')).toBe(1010100);
+    });
+  
+    test('should return NaN for invalid version strings', () => {
+      expect(versionStringToNumber('1.0')).toBeNaN();
+      expect(versionStringToNumber('2.5')).toBeNaN();
+      expect(versionStringToNumber('10.100')).toBeNaN();
+    });
+  
+    test('should handle single-digit versions correctly', () => {
+      expect(versionStringToNumber('1.1.1')).toBe(111);
+      expect(versionStringToNumber('2.2.2')).toBe(222);
+      expect(versionStringToNumber('9.9.9')).toBe(999);
+    });
+  
+    test('should handle edge cases for version strings', () => {
+      expect(versionStringToNumber('0.1.0')).toBe(10);  // Should be 10, as major = 0, minor = 1, patch = 0
+      expect(versionStringToNumber('1.0.1')).toBe(101);  // Should be 101
+      expect(versionStringToNumber('9.9.99')).toBe(9999);  // Should be 9999
+    });
+  
+    test('should return NaN for non-version strings', () => {
+      expect(versionStringToNumber('release/1.0.0')).toBeNaN();
+      expect(versionStringToNumber('feature/2.0.1')).toBeNaN();
+    });
+  });
 
   describe('getBranchesWithUpperSerialNumber', () => {
     it('Should throw if failed to define serial number for the current branch', () => {
