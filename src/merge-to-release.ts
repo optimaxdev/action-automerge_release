@@ -24,6 +24,27 @@ export function getBranchNameWithoutRefsPrefix(branchName: string): string {
 }
 
 /**
+ * Convert semantic version string (e.g. "1.2.3") to a numeric representation.
+ * This is used to compare versioned release branches like "release/1.2.3".
+ * The result is calculated as: major * 100 + minor * 10 + patch.
+ *
+ * Examples:
+ *   "1.0.0" -> 100
+ *   "1.2.3" -> 123
+ *   "2.1.0" -> 210
+ *
+ * @export
+ * @param {string} version - version string in the format "X.Y.Z"
+ * @returns {number} - numeric representation of the version
+ */
+export function versionStringToNumber(version: string): number {
+  const parts = version.split('.').map(part => parseInt(part, 10) || 0)
+  const [major, minor, patch] = [parts[0] || 0, parts[1] || 0, parts[2] || 0]
+
+  return major * 100 + minor * 10 + patch
+}
+
+/**
  * Return branch name without prefix
  * passed in releasePrefix argument.
  *
@@ -78,6 +99,32 @@ export function getBranchNameReleaseSerialNumber(
 }
 
 /**
+ * Determine the serial number of a release branch.
+ * Supports both "release/RLS-001" and "release/1.0.1" formats.
+ *
+ * @export
+ * @param {string} branchName
+ * @param {string} releasePrefix
+ * @param {string} releaseTaskPrefix
+ * @returns {(number | undefined)}
+ */
+export function getBranchSerialNumber(
+  branchName: string,
+  releasePrefix: string,
+  releaseTaskPrefix: string
+): number | undefined {
+  const nameWithoutPrefix = getBranchNameWithoutPrefix(branchName, releasePrefix)
+
+  // Check for semantic version style like 1.0.1
+  if (/^\d+\.\d+\.\d+$/.test(nameWithoutPrefix)) {
+    return versionStringToNumber(nameWithoutPrefix)
+  }
+
+  // Fall back to old RLS-style logic
+  return getBranchNameReleaseSerialNumber(branchName, releasePrefix, releaseTaskPrefix)
+}
+
+/**
  * Filter a branches from the list
  * with branches with upper serial
  * number than the branch.
@@ -96,7 +143,7 @@ export function getBranchesWithUpperSerialNumber(
   releasePrefix: string,
   releaseTaskPrefix: string
 ): string[] {
-  const currentBranchSerialNumber = getBranchNameReleaseSerialNumber(
+  const currentBranchSerialNumber = getBranchSerialNumber(
     currentBranchName,
     releasePrefix,
     releaseTaskPrefix
@@ -110,7 +157,7 @@ export function getBranchesWithUpperSerialNumber(
   const branchesToSerialsMap = branchesNamesList.reduce((map, branchName) => {
     const branchNameTrimmed = branchName.trim()
     if (!map[branchNameTrimmed]) {
-      const branchSerialNumber = getBranchNameReleaseSerialNumber(
+      const branchSerialNumber = getBranchSerialNumber(
         branchName,
         releasePrefix,
         releaseTaskPrefix
