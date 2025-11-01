@@ -46,16 +46,33 @@ jobs:
           releaseBranchPrfix: 'rel'
           releaseBranchTaskPrefix: 'v.'
           automergePrLabel: 'automerge-conflict'
+          slackWebhook: ${{ secrets.SLACK_WEBHOOK }}
+          slackChannel: 'U0523P1RNAU'
 ```
 
 where:
 
- 1. mainBranchName - it the "master" branch or another words "default" branch on GitHub repo.
- 2. releaseBranchPrfix - e.g. you pushes releases in branches with names like ``rel/v.192``. In this case the ``releaseBranchPrfix`` parameter must be equals to ``rel``.
- 3. releaseBranchTaskPrefix- e.g. you pushes releases in branches with names like ``rel/v.192``. In this case the ``releaseBranchTaskPrefix`` parameter must be equals to ``v.``. Another example: you pushes releases in branches with names like ``release/REL-00012``. In this case the ``releaseBranchTaskPrefix`` parameter must be equals to ``REL-`` and ``releaseBranchPrfix`` = ``release``.
- 4. automergePrLabel - is optional param, which defines which GitHub label name to use for automatically created pull requests when does a merge-conflict with some branch was occurred. All of requests automatically created will be marked up with this label.
+ 1. **mainBranchName** - it the "master" branch or another words "default" branch on GitHub repo.
+ 2. **releaseBranchPrfix** - e.g. you pushes releases in branches with names like ``rel/v.192``. In this case the ``releaseBranchPrfix`` parameter must be equals to ``rel``.
+ 3. **releaseBranchTaskPrefix** - e.g. you pushes releases in branches with names like ``rel/v.192``. In this case the ``releaseBranchTaskPrefix`` parameter must be equals to ``v.``. Another example: you pushes releases in branches with names like ``release/REL-00012``. In this case the ``releaseBranchTaskPrefix`` parameter must be equals to ``REL-`` and ``releaseBranchPrfix`` = ``release``.
+ 4. **automergePrLabel** - is optional param, which defines which GitHub label name to use for automatically created pull requests when does a merge-conflict with some branch was occurred. All of requests automatically created will be marked up with this label.
+ 5. **slackWebhook** - (optional) Slack webhook URL for receiving merge conflict notifications. Add this as a secret in your repository settings.
+ 6. **slackChannel** - (optional) Slack channel ID or user ID where notifications should be sent. If not specified, the webhook's default channel will be used.
 
-**You can also specify some other specific params**, please see ./actiom.yml
+## Slack Notifications
+
+When a merge conflict is detected, the action can automatically send a notification to Slack with:
+- Source and target branch information
+- Repository details
+- Links to view pull requests and workflow runs
+- Formatted as a warning message for immediate attention
+
+To enable Slack notifications:
+1. Create a Slack webhook URL (https://api.slack.com/messaging/webhooks)
+2. Add it as a secret in your repository: `Settings > Secrets > Actions > New repository secret`
+3. Add the `slackWebhook` and optionally `slackChannel` parameters to your workflow as shown above
+
+**You can also specify some other specific params**, please see ./action.yml
 
   
 

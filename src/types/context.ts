@@ -38,7 +38,7 @@ export interface IContextEnv {
    */
   releaseBranchPrfix: string
   /**
-   * Prefix of release branch task, before numbers. 
+   * Prefix of release branch task, before numbers.x
    * E.g. for the name "release/RLS-11" string "RLS-" is the prefix
    *
    * @type {string}
@@ -60,4 +60,18 @@ export interface IContextEnv {
    * @memberof IContexts
    */
   mainBranchName: string
+  /**
+   * Slack webhook URL for merge conflict notifications
+   *
+   * @type {string}
+   * @memberof IContextEnv
+   */
+  slackWebhook?: string
+  /**
+   * Slack channel or user ID for notifications
+   *
+   * @type {string}
+   * @memberof IContextEnv
+   */
+  slackChannel?: string
 }

@@ -25,6 +25,8 @@ export const initContextEnv = (): IContextEnv => {
     }),
     releaseBranchPrfix: core.getInput('releaseBranchPrfix', {required: false}),
     remoteName: core.getInput('remoteName', {required: false}),
+    slackWebhook: core.getInput('slackWebhook', {required: false}),
+    slackChannel: core.getInput('slackChannel', {required: false}),
   }
 }
 
