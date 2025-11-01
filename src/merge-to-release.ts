@@ -1,11 +1,13 @@
 import path from 'path'
+import * as gitHub from '@actions/github'
 import {TGitHubOctokit, IGitHubPushDescription} from './types/github'
 import {IContextEnv} from './types/context'
 import {debug} from './lib/log'
-import {getPRTargetBranchName, getPRBranchName} from './lib/github-common'
+import {getPRTargetBranchName, getPRBranchName, getPRRepo, getPRRepoOwner} from './lib/github-common'
 import {mergeBranchTo} from './lib/repo-api'
 import {createPullRequest} from './utils/repo'
 import {GIT_REF_HEADS_PREFIX} from './const/github'
+import {sendSlackMergeConflictNotification} from './lib/slack'
 
 /**
  * Remove refs/heads prefix from a branch name,
@@ -211,6 +213,21 @@ export async function mergeSourceToBranch(
       sourceBranchName,
       contextEnv.automergePrLabel
     )
+
+    // Send Slack notification for merge conflict
+    const context = gitHub.context
+    const repository = `${getPRRepoOwner(pushDescription)}/${getPRRepo(pushDescription)}`
+    const serverUrl = context.serverUrl || 'https://github.com'
+    const runId = context.runId.toString()
+
+    await sendSlackMergeConflictNotification(contextEnv, {
+      sourceBranch: sourceBranchName,
+      targetBranch: targetBranchName,
+      repository,
+      serverUrl,
+      runId,
+    })
+
     return false
   } else {
     debug(

@@ -26,6 +26,14 @@ inputs:
       description: 'Name of the remote repository'
       required: false
       default: 'origin'
+  slackWebhook:
+      description: 'Slack webhook URL for merge conflict notifications'
+      required: false
+      default: ''
+  slackChannel:
+      description: 'Slack channel or user ID for notifications'
+      required: false
+      default: ''
   # DEPRECATED
   # branchFetchingStrategy:
   #     description: 'Strategy used for releated branches list fetching. Can be "api" - GitHub API will be used or DEPRECATED! "bash" - git cli from bash will be used'
